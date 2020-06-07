@@ -66,8 +66,8 @@ class HIFF(object):
         plt.plot(X, Y_null_to_zero, 'b--')
         plt.plot(X, np.add(Y_null_to_one, Y_null_to_zero), 'g-')
         plt.legend(("all null to all 1s", "all null to all 0s", "all 0s to all 1s"))
-        plt.show()
         plt.savefig("Richard's plot H-IFF.png")
+        plt.show()
     
 h = HIFF(64, 4)
 h.plot()
