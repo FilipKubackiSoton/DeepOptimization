@@ -1,6 +1,7 @@
 import numpy as np 
 import matplotlib.pyplot as plt
 import math 
+import cv2
 
 class HIFF(object):
     def __init__(self, array_size, step_size):
@@ -66,7 +67,8 @@ class HIFF(object):
         plt.plot(X, np.add(Y_null_to_one, Y_null_to_zero), 'g-')
         plt.legend(("all null to all 1s", "all null to all 0s", "all 0s to all 1s"))
         plt.show()
-
+        plt.savefig("Richard's plot H-IFF.png")
+    
 h = HIFF(64, 4)
 h.plot()
             
