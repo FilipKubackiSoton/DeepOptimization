@@ -1,5 +1,7 @@
 import numpy as np 
 import math 
+import copy 
+import tensorflow as tf
 
 def rand_bin_array(K, N):
     """
@@ -10,6 +12,7 @@ def rand_bin_array(K, N):
     arr[:K]  = 1
     np.random.shuffle(arr)
     return arr
+
 
 def hiff_fitness(array):
     """
@@ -47,7 +50,6 @@ def hiff_fitness(array):
     levels = int(math.log2(size))
     sum = 0
     return val_recursive(array, 0,  sum)
-        
 
 def generate_training_sat(N, set_size):
     """
@@ -55,14 +57,14 @@ def generate_training_sat(N, set_size):
     
     return: binary array of size N to train NN
     """
-    input = []
-    output = []
+    input = np.ndarray(shape=(set_size, N))
+    output = np.ndarray(shape=(set_size, N))
 
     if not (math.log2(N)).is_integer():
             raise ValueError("Array size must be power of 2.")
     for k in range(set_size):
         candidate_solution = np.random.randint(2, size = N)
-        input.append(candidate_solution)
+        input[k]=candidate_solution
         solution_fitness = hiff_fitness(candidate_solution)
         for i in range(10 * N):
             index = np.random.randint(N)
@@ -72,7 +74,6 @@ def generate_training_sat(N, set_size):
             if new_fitness >= solution_fitness : 
                 candidate_solution = new_candidate_sol
                 solution_fitness = new_fitness
-        output.append(candidate_solution)
+        output[k]=candidate_solution
 
     return input, output
-            
