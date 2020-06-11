@@ -52,7 +52,7 @@ print("[INFO] generating testing dataset...")
 
 
 #model = shallowNet.build(input_size = input_size, latent_size=latent_size)
-model = shallowNet.build(input_size=input_size, latent_size=latent_size, reg)
+model = shallowNet.build(input_size=input_size, latent_size=latent_size, reg_cof=args["reg"])
 
 opt = Adam(lr=1e-3)
 model.compile(loss="mse", optimizer=opt)

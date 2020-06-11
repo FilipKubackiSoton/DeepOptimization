@@ -1,7 +1,7 @@
 import tensorflow as tf
 class shallowNet:
     @staticmethod
-    def build(input_size=32, latent_size=16, reg_cof = 0.001, dropout =0.2):
+    def build(input_size=32, latent_size=16, reg_cof = 0.01, dropout =0.2):
         model = tf.keras.Sequential([
             tf.keras.layers.Flatten(input_shape = (input_size, 1)),
             tf.keras.layers.Dense(input_size, kernel_regularizer=tf.keras.regularizers.l1(reg_cof)),
