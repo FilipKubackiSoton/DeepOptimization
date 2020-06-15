@@ -19,7 +19,7 @@ ap.add_argument("-s", "--size", type=int, default=500,
 	help="siz of the validation set")
 args = vars(ap.parse_args())
 
-model = tf.keras.models.load_model('saved_model/my_model')
+model = tf.keras.models.load_model('last_model/last_model')
 print(model.summary())
 
 
@@ -30,12 +30,12 @@ for i in range(len(model.weights)):
 fig, axs = plt.subplots(2)
 fig.suptitle('Weights matrix encoder/decoder', fontsize=16)
 fig.subplots_adjust(hspace =0.5)
-pcm = axs[0].imshow(model.get_weights()[2], interpolation='nearest', cmap=cm.Greys_r)
+pcm = axs[0].imshow(model.get_weights()[0], interpolation='nearest', cmap=cm.Greys_r)
 axs[0].set_title("Encoder")
 axs[0].set_ylabel("Hidden Node #")
 axs[0].set_xlabel("Visible Node #")
 
-pcm=axs[1].imshow(model.get_weights()[2], interpolation='nearest', cmap=cm.Greys_r)
+pcm=axs[1].imshow(model.get_weights()[0], interpolation='nearest', cmap=cm.Greys_r)
 axs[1].set_title("Decoder")
 axs[1].set_ylabel("Hidden Node #")
 axs[1].set_xlabel("Visible Node #")
