@@ -84,6 +84,7 @@ def generate_training_sat(N, set_size):
 def generate_evol_plot(N=32, path = "solution_development_plot.png", learning_steps = 50):
     candidate_solution = np.random.randint(2, size = N)
     sol_evol = []
+    sol_evol.append(candidate_solution)
     max_fitt = 0
     for i in range(learning_steps):
         index = np.random.randint(N)
@@ -91,10 +92,11 @@ def generate_evol_plot(N=32, path = "solution_development_plot.png", learning_st
         index = np.random.randint(N)
         new_candidate_sol = copy.copy(candidate_solution)
         new_candidate_sol[index] = 1 - new_candidate_sol[index]
-        new_fit = hiff_fitness(candidate_solution)
+        new_fit = hiff_fitness(new_candidate_sol)
         if new_fit >= current_fit:
-            sol_evol.append(new_candidate_sol)
             candidate_solution = new_candidate_sol
+        
+        sol_evol.append(candidate_solution)
 
     tmp = np.asarray(sol_evol)
     plt.figure()
