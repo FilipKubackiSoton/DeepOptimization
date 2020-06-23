@@ -3,7 +3,7 @@ import math
 import copy
 import matplotlib.pyplot as plt 
 import matplotlib.cm as cm
-
+import tensorflow as tf
 def rand_bin_array(K, N):
     """
     THe function return random binary string. 
@@ -61,15 +61,14 @@ def generate_training_sat(N, set_size):
     
     return: binary array of size N to train NN
     """
-    input = []
-    output = []
-    sol_evol = []
+    input = np.ndarray(shape=(set_size, N), dtype=np.int32)
+    output = np.ndarray(shape=(set_size, N), dtype=np.int32)
 
     if not (math.log2(N)).is_integer():
             raise ValueError("Array size must be power of 2.")
     for k in range(set_size):
         candidate_solution = np.random.randint(2, size = N)
-        input.append(candidate_solution)
+        input[k]=candidate_solution
         solution_fitness = hiff_fitness(candidate_solution)
         for i in range(10 * N):
             index = np.random.randint(N)
@@ -79,7 +78,13 @@ def generate_training_sat(N, set_size):
             if new_fitness >= solution_fitness : 
                 candidate_solution = new_candidate_sol
                 solution_fitness = new_fitness
+        output[k]=candidate_solution
+
     return input, output
+
+
+
+
 
 def generate_evol_plot(N=32, path = "solution_development_plot.png", learning_steps = 50):
     candidate_solution = np.random.randint(2, size = N)
@@ -131,7 +136,4 @@ def generate_sol_plot(N=32, target_size = 10 ,path = "trajectory_plot.png", lear
     plt.xlabel("learning step")
     plt.ylabel("fitness \ max_fitness")
     plt.savefig(path)
-
-generate_sol_plot()
-generate_evol_plot()
     
