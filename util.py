@@ -61,8 +61,8 @@ def generate_training_sat(N, set_size):
     
     return: binary array of size N to train NN
     """
-    input = np.ndarray(shape=(set_size, N), dtype=np.int32)
-    output = np.ndarray(shape=(set_size, N), dtype=np.int32)
+    input = np.ndarray(shape=(set_size, N))
+    output = np.ndarray(shape=(set_size, N))
 
     if not (math.log2(N)).is_integer():
             raise ValueError("Array size must be power of 2.")
@@ -81,7 +81,6 @@ def generate_training_sat(N, set_size):
         output[k]=candidate_solution
 
     return input, output
-
 
 
 

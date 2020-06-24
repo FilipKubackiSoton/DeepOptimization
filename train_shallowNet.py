@@ -32,7 +32,7 @@ ap.add_argument("-b", "--batch", type=int, default=4,
     help="batch size")   
 ap.add_argument("-a", "--actplt", type=str, default="activationL1.png",
     help="name of the plot of the activation")    
-ap.add_argument("-r", "--reg", type=float, default=0.01,
+ap.add_argument("-r", "--reg", type=float, default=0.001,
     help="regularization coefficient")    
 ap.add_argument("-d", "--drop", type=float, default=1.0,
     help="drop out coefficient ")    
@@ -57,18 +57,18 @@ print("[INFO] generating trainnig dataset...")
 
 # generate the test set 
 print("[INFO] generating testing dataset...")
-(testX, testY) = ut.generate_training_sat(input_size,int(set_size/2))
+(testX, testY) = ut.generate_training_sat(input_size,int(set_size/10))
 
 model = shallowNet.build(input_shape=input_size, compression=compression, reg_cof=args["reg"])
-#model = Autoencoder(input_size=args["input"], compression = args["comp"], dropout = args["drop"], reg_cof = args["reg"])
-opt = Adam(lr=0.01)
-model.compile(loss='mse', optimizer=opt)
+#model = Autoencoder(input_size=32, compression = 0.8, dropout = 0.2, reg_cof = 0.001)
+#opt = Adam(lr=0.01)
+#model.compile(loss='mse', optimizer=opt)
 H = model.fit(
     trainY, trainY,
-    validation_data = (testY, testY),
-    epochs = args["epochs"],
-    batch_size = args["batch"],
-    shuffle = True
+    #validation_data = (testY, testY),
+    epochs = epochs,
+    batch_size = batch,
+    #shuffle = True
 )
 model.summary()
 
@@ -126,6 +126,16 @@ plt.legend(loc="lower left")
 
 #save loss plot 
 plt.savefig(os.path.join(plot_dir, "loss.png"))
+"""
+with open(os.path.join(plot_dir,"reproduce"+".txt"), 'w') as f:
+    data = str(
+        'python -e '+args["epochs"]+
+        " -d "+str('%3f' %args["drop"])+
+        " -r "+str('%3f' % args["reg"])+
+        " -c "+str('%2f' % args["comp"])
+    )
+    f.write(data)
+"""
 
 for i in range(len(model.weights)):
 	tmp = model.get_weights()[i]
@@ -167,5 +177,3 @@ plt.xlabel("Node #")
 plt.ylabel("Activation value")
 plt.savefig(args["aplot"])
 print("[INFO]: Activation layer saved in the file: ", args["aplot"])
-
-
