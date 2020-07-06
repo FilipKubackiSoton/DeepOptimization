@@ -84,6 +84,7 @@ print("[INFO] generating trainnig dataset...")
 print("[INFO] generating testing dataset...")
 (testX, testY) = ut.generate_training_sat(input_size, int(set_size / 10))
 
+
 # build and compile model
 model1 = shallowNet.build(
     input_shape=input_size, compression=compression, reg_cof=args["reg"]
@@ -91,10 +92,14 @@ model1 = shallowNet.build(
 
 # train the model
 H1 = model1.fit(trainY, trainY, epochs=epochs, batch_size=batch_size, shuffle=True)
+# save the model
+ut.save_model(model1)
+ut.save_model(model1)
+
 # show model structure
 model1.summary()
-pt.plot_model_loss(H1, "loss_plot_model_1.png", epochs)
-pt.plot_weights_model(model1, "weights_plot_model_1.png")
+# pt.plot_model_loss(H1, "loss_plot_model_1.png", epochs)
+# pt.plot_weights_model(model1, "weights_plot_model_1.png")
 encoder1, decoder1 = ut.split_model_into_encoder_decoder(model1, show_summary=True)
 trainY2 = ut.generate_new_training_set(
     trainY, encoder1, decoder1
@@ -103,21 +108,35 @@ model2 = shallowNet.build()  # build model2 based on the enhanced data set: trai
 H2 = model2.fit(
     trainY2, trainY2, epochs=epochs, batch_size=batch_size, verbose=1, shuffle=True
 )
-pt.plot_model_loss(H2, "loss_plot_model_2.png", epochs)
-pt.plot_weights_model(model2, "weights_plot_model_2.png")
-pt.generate_evolution_plot(encoder1, decoder1, trainY)
-pt.generate_trajectory_global_plot(
-    encoder1, decoder1, trainY, debuge_variation=True, epochs=10
+# pt.plot_model_loss(H2, "loss_plot_model_2.png", epochs)
+# pt.plot_weights_model(model2, "weights_plot_model_2.png")
+pt.plot_evolution_model(
+    encoder1, decoder1, trainY, plot_name="evolution model ed1 tY.png"
+)
+pt.plot_global_trajectory(
+    encoder1,
+    decoder1,
+    trainY,
+    debuge_variation=True,
+    epochs=10,
+    plot_name="Global trajectory ed1 tY.png",
 )
 model3 = ut.add_layer_to_model(model2, show_summary=True)
 H3 = model3.fit(
     trainY2, trainY2, epochs=epochs, batch_size=batch_size, verbose=1, shuffle=True
 )
+ut.save_model(model3)
+
 pt.plot_model_loss(H3, "to_delete.png", epochs)
 pt.plot_weights_model(model3, "to_delete_2.png")
 encoder3, decoder3 = ut.split_model_into_encoder_decoder(model3, True)
-pt.generate_trajectory_global_plot(
-    encoder3, decoder3, trainY, debuge_variation=True, epochs=10
+pt.plot_global_trajectory(
+    encoder3,
+    decoder3,
+    trainY,
+    debuge_variation=True,
+    epochs=10,
+    plot_name="Global trajectory ed3 ty1.png",
 )
 progress_set_evidence1 = ut.transfer_sample_latent_flip(trainY[0], encoder1, decoder1)[
     -1
@@ -125,58 +144,25 @@ progress_set_evidence1 = ut.transfer_sample_latent_flip(trainY[0], encoder1, dec
 progress_set_evidence3 = ut.transfer_sample_latent_flip(trainY[0], encoder3, decoder3)[
     -1
 ]
-pt.plot_fitness_development_phase(progress_set_evidence1)
-pt.plot_fitness_development_phase(progress_set_evidence3)
+pt.plot_fitness_development_phase(progress_set_evidence1, plot_name="fitnes1.png")
+pt.plot_fitness_development_phase(progress_set_evidence3, plot_name="fitnes3.png")
 
 
-"""
 ########################################
 ########SAVING MODEL AND PLOTS #########
 ########################################
+"""
+plot_dir = os.path.join("plots")  # plots dir
+plot_path = Path(plot_dir)  # plots path
 
-model_dir = os.path.join("saved_model", "model") # model dir
-plot_dir = os.path.join("plots") # plots dir 
 
-model_path = Path(model_dir) #model path 
-plot_path = Path(plot_dir) # plots path
-
-# create model dir or if it's empty clean it 
-try:
-    model_path.rmdir()
-except OSError as e:
-    print(f'Error: {model_path} : {e.strerror}')
-model_path.mkdir(exist_ok = True, parents=True)
-
-# create plot dir or if it's empty clean it 
-try:
-    plot_path.rmdir()
-except OSError as e:
-    print(f'Error: {plot_path} : {e.strerror}')
-plot_path.mkdir(exist_ok = True, parents=True)
-
-# Save the entire model
-model.save(model_dir) 
-if os.path.exists(model_path):
-    shutil.rmtree(model_path)
-os.makedirs(model_path)
-model.save(model_path) 
-
-ut.plot_model_loss(model_fit = H, plot_name = "loss_model_1.png", epochs = epochs) # ploting and saving loss plot 
-ut.plot_weights_mode(model = model, plot_name = "weight_model_1.png") # ploting and saving wight plot 
-ut.plot_latent_acitvation(model = model, plot_name = "latent_activation_model_1.png") # ploting and saving activaation plot 
-encoder, decoder = ut.extract_encoder_and_decoder(model) # axtracting encoder and decoder from the model 
-
-trainY2 = ut.generate_new_training_set(trainY, encoder, decoder) # generating enhanced data set
-model2 = shallowNet.build(input_shape=input_size, compression=compression, reg_cof=args["reg"]) #create and build new model 
-H2 = model2.fit( # train the new model based on the enhanced training set 
-    trainY2, trainY2,
-    epochs = epochs,
-    batch_size = batch,
-    shuffle = True
+trainY2 = ut.generate_new_training_set(
+    trainY, encoder, decoder
+)  # generating enhanced data set
+model2 = shallowNet.build(
+    input_shape=input_size, compression=compression, reg_cof=args["reg"]
+)  # create and build new model
+H2 = model2.fit(  # train the new model based on the enhanced training set
+    trainY2, trainY2, epochs=epochs, batch_size=batch, shuffle=True
 )
-model2.summary() # summarize the new model 
-ut.plot_model_loss(H2, "loss_model_2.png", epochs = epochs) # ploting and saving loss plot 
-ut.plot_weights_mode(model = model2, plot_name = "weight_model_2.png") # ploting and saving weight plot 
-ut.plot_evolution_model(encoder, decoder, trainY, "evolution_model_2.png")# ploting and saving evolution plot 
-ut.plot_trajectory_evolution(encoder, decoder, trainY, "trajectory_model_2.png")# ploting and saving trajectory plot 
 """

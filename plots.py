@@ -13,7 +13,7 @@ import matplotlib.cm as cm
 
 ### THE CLASS TO VISUALIZE THE WORK ####
 
-def plot_weights_model(model, path="weight_plot_default_name.png", number_of_deep_layers_to_show = None):
+def plot_weights_model(model, plot_name="weight_plot_default_name.png", number_of_deep_layers_to_show = None):
     """
     Visualize weights of model. 
     If added hidden layers is more than 1, then the function shows
@@ -68,8 +68,10 @@ def plot_weights_model(model, path="weight_plot_default_name.png", number_of_dee
             ax.set_ylabel("Vissible")
             index+=1
     fig.colorbar(im, ax=axes.ravel().tolist())
-    #plt.savefig(path)
-    plt.show()  
+    path = ut.create_plot_path(plot_name)
+    plt.savefig(path)
+    print("[INFO]: Weights of model were saved in the directory: ", path)
+
 
 def plot_model_loss(model_fit, plot_name, epochs):
     """
@@ -119,47 +121,6 @@ def plot_latent_acitvation(model, plot_name, validation_set_size = 50):
     plt.savefig(path)
     print("[INFO]: Latent activation plot was saved in the directory: ", path)
 
-
-
-def plot_evolution_model(encoder, decoder, array, plot_name, learning_steps = 50):
-    """
-    Still to improve
-    Generate and save evolution plot of the model. 
-
-    Parameters: 
-        encoder - encoder reducing dimensionality
-        decoder - decoder retrieving values from the latent space 
-        array - set of sample from which one will be choosen and evaluated
-        plot_name - name of the saving plot 
-    
-    Optional parameters: 
-        learning_steps - number of steps of sample evaluation 
-    """
-    N = np.shape(array)[-1] # size of the array 
-    index = np.random.randint(N) #choose random index to flip 
-    candidate_solution = array[index]# pick up random sample 
-    sol_evol = [] # list to store steps of evolution 
-    sol_evol.append(candidate_solution)
-    current_fittnes = ut.hiff_fitness(candidate_solution)
-    for i in range(learning_steps-1):
-        new_candidate_sol = copy.copy(candidate_solution)
-        output_tensor, output_array, new_fitness = ut.code_flip_decode(new_candidate_sol, encoder, decoder)
-        if new_fitness >= current_fittnes:
-            candidate_solution = output_array 
-            current_fittnes = new_fitness
-        sol_evol.append(candidate_solution)
-
-    tmp = np.array(sol_evol)
-    plt.figure()
-    plt.imshow(tmp, interpolation='nearest', cmap=cm.Greys_r)
-    plt.title("Solution Development at Evolution Step 1")
-    plt.xlabel("Solution variable")
-    plt.ylabel("Development Step")
-    plt.colorbar()
-    path = ut.create_plot_path(plot_name)
-    plt.savefig(path)
-
-
 def plot_trajectory_evolution(encoder, decoder, array, plot_name, 
                                 target_size = 10, learning_steps = 30):  
     """
@@ -201,8 +162,10 @@ def plot_trajectory_evolution(encoder, decoder, array, plot_name,
     plt.ylabel("fitness \ max_fitness")
     path = ut.create_plot_path(plot_name)
     plt.savefig(path)
+    print("[INFO]: Trajectory evoultion plot was saved in the directory: ", path)
 
-def plot_fitness_development_phase(array, plot_name = "fitness_of_solution_after_each_Development_phase.png"):
+
+def plot_fitness_development_phase(array, plot_name):
     # construct a plot that plots and saves the training history
     N = array.shape[0] # size of the array 
     X = np.arange(0, N) # x range 
@@ -217,13 +180,53 @@ def plot_fitness_development_phase(array, plot_name = "fitness_of_solution_after
     plt.ylabel("Fitness")
     plt.legend(loc="lower left")
     path = ut.create_plot_path(plot_name)
+    plt.savefig(path)
+    print("[INFO]: Fitness development phase plot was saved in the directory: ", path)
 
-    #plt.savefig(path)
-    plt.show()
 
-def generate_trajectory_global_plot(encoder, decoder, array, epochs = 20, 
+def plot_evolution_model(encoder, decoder, array, plot_name, learning_steps = 50):
+    """
+    Still to improve
+    Generate and save evolution plot of the model. 
+
+    Parameters: 
+        encoder - encoder reducing dimensionality
+        decoder - decoder retrieving values from the latent space 
+        array - set of sample from which one will be choosen and evaluated
+        plot_name - name of the saving plot 
+    
+    Optional parameters: 
+        learning_steps - number of steps of sample evaluation 
+    """
+    N = np.shape(array)[-1] # size of the array 
+    index = np.random.randint(N) #choose random index to flip 
+    candidate_solution = array[index]# pick up random sample 
+    sol_evol = [] # list to store steps of evolution 
+    sol_evol.append(candidate_solution)
+    current_fittnes = ut.hiff_fitness(candidate_solution)
+    for i in range(learning_steps-1):
+        new_candidate_sol = copy.copy(candidate_solution)
+        output_tensor, output_array, new_fitness = ut.code_flip_decode(new_candidate_sol, encoder, decoder)
+        if new_fitness >= current_fittnes:
+            candidate_solution = output_array 
+            current_fittnes = new_fitness
+        sol_evol.append(candidate_solution)
+
+    tmp = np.array(sol_evol)
+    plt.figure()
+    plt.imshow(tmp, interpolation='nearest', cmap=cm.Greys_r)
+    plt.title("Solution Development at Evolution Step 1")
+    plt.xlabel("Solution variable")
+    plt.ylabel("Development Step")
+    plt.colorbar()
+    path = ut.create_plot_path(plot_name)
+    plt.savefig(path)
+    print("[INFO]: Evolution model plot was saved in the directory: ", path)
+
+
+def plot_global_trajectory(encoder, decoder, array,plot_name, epochs = 20, 
                                     learning_steps = 50, target_size = 10 ,
-                                    path = "trajectory_model_2.png", debuge_variation = False, threshold = 5):
+                                    debuge_variation = False, threshold = 5):
 
     loop_done = False
     fitness_history = [] 
@@ -254,10 +257,14 @@ def generate_trajectory_global_plot(encoder, decoder, array, epochs = 20,
         plt.plot(X, fitness_history[:,i])
     plt.xlabel("epoch")
     plt.ylabel("fitness \ max_fitness")
-    plt.show()
+    path = ut.create_plot_path(plot_name)
+    plt.savefig(path)
+    print("[INFO]: Global trajectory plot was saved in the directory: ", path)
+
     return trajectory_samples
 
-def generate_evolution_plot(encoder, decoder, array, path = "solution_development_model_2.png", learning_steps = 50):
+"""
+def plot_evolution(encoder, decoder, array, plot_name, learning_steps = 50):
     N = np.shape(array)[-1] # size of the array 
     index = np.random.randint(N) #choose random index to flip 
     candidate_solution = array[index]# pick up random sample 
@@ -280,5 +287,7 @@ def generate_evolution_plot(encoder, decoder, array, path = "solution_developmen
     plt.xlabel("Solution variable")
     plt.ylabel("Development Step")
     plt.colorbar()
-   # plt.savefig(path)
-    plt.show()
+    path = ut.create_plot_path(plot_name)
+    plt.savefig(path)
+    print("[INFO]: Evolution plot was saved in the directory: ", path)
+"""

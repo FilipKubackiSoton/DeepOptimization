@@ -31,7 +31,7 @@ class DenseTranspose(tf.keras.layers.Layer):
 
 class shallowNet:
     @staticmethod
-    def build(input_shape=32, compression=0.8, reg_cof=0.001, dropout=0.2):
+    def build(input_shape=32, compression=0.8, reg_cof=0.001, dropout=0.2, name="NN 1"):
         assert compression < 1 and compression > 0, (
             "compression coefficient must be between (0,1)" % compression
         )
