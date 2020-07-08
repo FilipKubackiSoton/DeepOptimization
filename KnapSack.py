@@ -14,7 +14,7 @@ class KnapSack:
             FileName = InstanceName + ".dat"
         else:
             Beasly = True
-            ProblemFolder = "MKP/chubeas"
+            ProblemFolder = "MKP/chubeas/"
             ResFile = ProblemFolder + "BestKnownResults.txt"
             InstanceName = InstanceName.split("_")
 
@@ -25,14 +25,16 @@ class KnapSack:
 
         f = open(ProblemFolder + FileName)
         nextLine = f.readline().strip().split()
-        print("Next Line: !!!!! ", nextLine)
         self.Size = int(nextLine[0])
         self.nCoefs = int(nextLine[1])
         self.GlobalOptimumFitness = float(nextLine[2])
         # print('Size = {}, nCoefs = {}, Glbl = {}'.format(self.Size, self.nCoefs, self.GlobalOptimumFitness))
-        self.P = np.zeros(self.Size)  # array of proffits
+        self.P = np.zeros(self.Size)  # array of proffits - value of each item
         self.R = np.zeros((self.nCoefs, self.Size))  # matrix of constrains
-        self.b = np.zeros(self.nCoefs)  # array of capacities
+        self.b = np.zeros(self.nCoefs)  # array of capacities for d dimensions array([11927., 13727., 11551., 13056., 13460.])
+
+
+
         CountV = 0
 
         # read data and feed profit array
@@ -78,7 +80,7 @@ class KnapSack:
 
         if Beasly:
             # Get Beasly best results.
-            f_res = open(ResFile)
+           # f_res = open(ResFile)
             instance_indx = int(InstanceName[3]) - 1
             if int(InstanceName[2]) == 50:
                 instance_indx += 10
@@ -89,12 +91,14 @@ class KnapSack:
             res_indx = "{}.{}-{:02d}".format(
                 InstanceName[1], InstanceName[0], instance_indx
             )
+            """
             for l in range(272):
                 nextLine = f_res.readline().strip().split()
                 if nextLine[0] == res_indx:
                     BestResult = nextLine[1]
                     break
             # print(res_indx)
+            """
         else:
             BestResult = self.CalcMax(np.ones(self.Size))
 
@@ -335,7 +339,7 @@ class KnapSack:
         )  # sort by column 0, then by column 1
         self.Utility = np.copy(self.Utility[i])  # copy util in the right order
 
-        return
+        return 
 
     def SolToTrain(self, Sol):
         """
@@ -345,11 +349,16 @@ class KnapSack:
         indicate negative contributon. 
         """
         ConvertSol = np.copy(Sol)
+        ConvertSol[Sol == 0] = -1
+        
+        """ 
+        Orginal code 
         if self.zero_out:
             ConvertSol[Sol == -1] = 0
             # ConvertSol[ConvertSol==0] = 0.499
         # else:
         # ConvertSol[ConvertSol==-1] = -0.001
+        """
         return ConvertSol
 
     def CountChange(self, Old, New):

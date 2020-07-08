@@ -94,14 +94,12 @@ model1 = shallowNet.build(
 H1 = model1.fit(trainY, trainY, epochs=epochs, batch_size=batch_size, shuffle=True)
 # save the model
 ut.save_model(model1)
-ut.save_model(model1)
-
 # show model structure
 model1.summary()
 # pt.plot_model_loss(H1, "loss_plot_model_1.png", epochs)
 # pt.plot_weights_model(model1, "weights_plot_model_1.png")
 encoder1, decoder1 = ut.split_model_into_encoder_decoder(model1, show_summary=True)
-trainY2 = ut.generate_new_training_set(
+trainY2 = ut.generate_enhanced_training_set(
     trainY, encoder1, decoder1
 )  # generate enhanced training set2
 model2 = shallowNet.build()  # build model2 based on the enhanced data set: trainY2

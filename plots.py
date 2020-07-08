@@ -9,9 +9,14 @@ from shallowNet.shallowNet import shallowNet, DenseTranspose
 import matplotlib.pyplot as plt 
 import copy
 import matplotlib.cm as cm
+from KnapSack import KnapSack
+
 
 
 ### THE CLASS TO VISUALIZE THE WORK ####
+knapSack = KnapSack("100_5_25_1")
+
+fitness_function = knapSack.Fitness
 
 def plot_weights_model(model, plot_name="weight_plot_default_name.png", number_of_deep_layers_to_show = None):
     """
@@ -31,10 +36,10 @@ def plot_weights_model(model, plot_name="weight_plot_default_name.png", number_o
         number of added layers
     """
     number_of_convoluted_layers = 0
-    transpose_layer_type = type(DenseTranspose(None))
+    transpose_layer_type = str(type(DenseTranspose(None))).split(".")[-1]
     layers_to_show = []
     for l in model.layers:
-        if type(l) == transpose_layer_type: # compare types of convoluted layers
+        if str(type(l)).split(".")[-1] == transpose_layer_type: # compare types of convoluted layers
             number_of_convoluted_layers += 1
             layers_to_show.append(l)
 
@@ -50,11 +55,11 @@ def plot_weights_model(model, plot_name="weight_plot_default_name.png", number_o
     if number_of_deep_layers_to_show == 1: # show encoder and decoder weights 
         fig, axes = plt.subplots(nrows=1, ncols=2, constrained_layout = True)
         fig.suptitle('Encoder/Decoder Weights', fontsize=16)
-        im =axes[0].imshow(layers_to_show[0].weights_transpose.numpy().transpose(), interpolation='nearest', cmap=cm.Greys_r)
+        im =axes[0].imshow(layers_to_show[0].get_weights()[1], interpolation='nearest', cmap=cm.Greys_r)
         axes[0].set_title("Encoder")
         axes[0].set_ylabel("Visible")
         axes[0].set_xlabel("Hidden")
-        im =axes[1].imshow(layers_to_show[0].weights_transpose.numpy().transpose(), interpolation='nearest', cmap=cm.Greys_r)
+        im =axes[1].imshow(layers_to_show[0].get_weights()[1], interpolation='nearest', cmap=cm.Greys_r)
         axes[1].set_title("Decoder")
         axes[1].set_ylabel("Visible")
         axes[1].set_xlabel("Hidden")
@@ -62,7 +67,8 @@ def plot_weights_model(model, plot_name="weight_plot_default_name.png", number_o
         fig, axes = plt.subplots(nrows=1, ncols=number_of_deep_layers_to_show, constrained_layout = True)
         fig.suptitle('Weights Matrix Image Reconstruction', fontsize=16)
         for ax in axes.flat:
-            im = ax.imshow(layers_to_show[index].weights_transpose.numpy().transpose(), interpolation='nearest', cmap=cm.Greys_r)
+            
+            im = ax.imshow(layers_to_show[index].get_weights()[1], interpolation='nearest', cmap=cm.Greys_r)
             ax.set_title("Conv Layer : " + str(index))
             ax.set_xlabel("Hidden")
             ax.set_ylabel("Vissible")
@@ -93,43 +99,14 @@ def plot_model_loss(model_fit, plot_name, epochs):
     plt.savefig(path)
     print("[INFO]: Loss plot was saved in the directory: ", path)
 
-def plot_latent_acitvation(model, plot_name, validation_set_size = 50):
-    """
-    Plot latent activation 
-
-    Parameters: 
-        model - model on which we are working 
-        plot_name - name of the saving file 
-    """
-    # generate the val set 
-    print("[INFO] generating validating dataset...")
-    (valX, valY) = ut.generate_training_sat(32, validation_set_size)
-
-    features_list = [layer.output for layer in model.layers[:4]]
-    new_model = tf.keras.Model(inputs = model.input, outputs = features_list)
-    predict = new_model.predict(valX)
-    N = np.arange(0, len(predict[3][0]))
-
-    plt.figure()
-    for i in range(20):
-        index = np.random.randint(len(predict[3][0]))
-        plt.plot(N, predict[3][index], 'o',color = 'black')
-    plt.title("L1 activation")
-    plt.xlabel("Node #")
-    plt.ylabel("Activation value")
-    path = ut.create_plot_path(plot_name)
-    plt.savefig(path)
-    print("[INFO]: Latent activation plot was saved in the directory: ", path)
-
-def plot_trajectory_evolution(encoder, decoder, array, plot_name, 
-                                target_size = 10, learning_steps = 30):  
+def plot_trajectory_evolution(model, array, plot_name, normalization_factor = 1
+                                ,target_size = 10, learning_steps = 30):  
     """
     Still to improve
     Generate and save trajectory plot of the model. 
 
     Parameters: 
-        encoder - encoder reducing dimensionality
-        decoder - decoder retrieving values from the latent space 
+        model - model on which base the evolution will be calculated 
         array - set of sample from which  will be choosen and evaluated
         plot_name - name of the saving plot 
 
@@ -138,14 +115,15 @@ def plot_trajectory_evolution(encoder, decoder, array, plot_name,
         learning_steps - number of steps in evaluation - default 30
         
     """  
+    encoder, decoder = ut.split_model_into_encoder_decoder(model)
     X = np.arange(learning_steps)
-    normalization_factor = ut.hiff_fitness(np.ones((np.shape(array)[-1],)))
+    #normalization_factor = ut.hiff_fitness(np.ones((np.shape(array)[-1],)))
     trajectory_samples = []
     plt.figure()
     plt.title("Example Solution Trajectory 2 at Evolution Step 1")
     for k in range(target_size):
         current_array = array[k]
-        current_fitness = ut.hiff_fitness(current_array)
+        current_fitness = fitness_function(current_array)
         current_target_trajectory = []
         current_target_trajectory.append(current_fitness/normalization_factor)
         for i in range(learning_steps-1):
@@ -169,12 +147,12 @@ def plot_fitness_development_phase(array, plot_name):
     # construct a plot that plots and saves the training history
     N = array.shape[0] # size of the array 
     X = np.arange(0, N) # x range 
-    max_fintess_line = np.ones(N)
+    #max_fintess_line = np.ones(N)
     plt.figure()
     plt.plot(X, array, 'o', label="AutoEncoder")
-    plt.plot(X, max_fintess_line, lw = 2.8, label="Global Optima")
-    x1, x2, y1, y2 = plt.axis()
-    plt.axis((x1,x2, 0.5,1.01))
+    #plt.plot(X, max_fintess_line, lw = 2.8, label="Global Optima")
+    #x1, x2, y1, y2 = plt.axis()
+    #plt.axis((x1,x2, 0.5,1.01))
     plt.title("Fitness of Solution after each Development Phase\n")
     plt.xlabel("Evolution Step")
     plt.ylabel("Fitness")
@@ -184,26 +162,26 @@ def plot_fitness_development_phase(array, plot_name):
     print("[INFO]: Fitness development phase plot was saved in the directory: ", path)
 
 
-def plot_evolution_model(encoder, decoder, array, plot_name, learning_steps = 50):
+def plot_evolution_model(model, array, plot_name, learning_steps = 50):
     """
     Still to improve
     Generate and save evolution plot of the model. 
 
     Parameters: 
-        encoder - encoder reducing dimensionality
-        decoder - decoder retrieving values from the latent space 
+        model - model to test 
         array - set of sample from which one will be choosen and evaluated
         plot_name - name of the saving plot 
     
     Optional parameters: 
         learning_steps - number of steps of sample evaluation 
     """
-    N = np.shape(array)[-1] # size of the array 
+    encoder, decoder = ut.split_model_into_encoder_decoder(model)
+    N = np.shape(array)[0] # size of the array 
     index = np.random.randint(N) #choose random index to flip 
     candidate_solution = array[index]# pick up random sample 
     sol_evol = [] # list to store steps of evolution 
     sol_evol.append(candidate_solution)
-    current_fittnes = ut.hiff_fitness(candidate_solution)
+    current_fittnes = fitness_function(candidate_solution)
     for i in range(learning_steps-1):
         new_candidate_sol = copy.copy(candidate_solution)
         output_tensor, output_array, new_fitness = ut.code_flip_decode(new_candidate_sol, encoder, decoder)
@@ -236,7 +214,8 @@ def plot_global_trajectory(encoder, decoder, array,plot_name, epochs = 20,
                                         encoder=encoder, decoder = decoder,
                                         array = array,
                                         learning_steps = learning_steps, 
-                                        target_size = target_size)
+                                        target_size = target_size,
+                                        )
         fitness_history.append(trajectory_samples[:,-1])
         
         if debuge_variation:
@@ -262,6 +241,37 @@ def plot_global_trajectory(encoder, decoder, array,plot_name, epochs = 20,
     print("[INFO]: Global trajectory plot was saved in the directory: ", path)
 
     return trajectory_samples
+
+
+def plot_latent_acitvation(model, plot_name, validation_set_size = 50):
+    """
+    Plot latent activation 
+
+    Parameters: 
+        model - model on which we are working 
+        plot_name - name of the saving file 
+    """
+    # generate the val set 
+    print("[INFO] generating validating dataset...")
+    valY = ut.generate_training_sat(knapSack.Size, validation_set_size)
+
+    features_list = [layer.output for layer in model.layers[:4]]
+    new_model = tf.keras.Model(inputs = model.input, outputs = features_list)
+    predict = new_model.predict(valX)
+    N = np.arange(0, len(predict[3][0]))
+
+    plt.figure()
+    for i in range(20):
+        index = np.random.randint(len(predict[3][0]))
+        plt.plot(N, predict[3][index], 'o',color = 'black')
+    plt.title("L1 activation")
+    plt.xlabel("Node #")
+    plt.ylabel("Activation value")
+    path = ut.create_plot_path(plot_name)
+    plt.savefig(path)
+    print("[INFO]: Latent activation plot was saved in the directory: ", path)
+
+
 
 """
 def plot_evolution(encoder, decoder, array, plot_name, learning_steps = 50):

@@ -22,7 +22,7 @@ class DenseTranspose(tf.keras.layers.Layer):
         return self.activation(z + self.b)
 
     def get_weights(self):
-        return {"w": np.shape(tf.transpose(self.w))}
+        return self.w.numpy()
 
     @property
     def weights_transpose(self):
@@ -31,11 +31,11 @@ class DenseTranspose(tf.keras.layers.Layer):
 
 class shallowNet:
     @staticmethod
-    def build(input_shape=32, compression=0.8, reg_cof=0.001, dropout=0.2, name="NN 1"):
+    def build(input_shape=32, compression=0.8, reg_cof=0.001, dropout=0.2, name="NN 1", lr = 0.01):
         assert compression < 1 and compression > 0, (
             "compression coefficient must be between (0,1)" % compression
         )
-        assert dropout < 1 and dropout > 0, (
+        assert dropout < 1 and dropout >=0, (
             "dropout coefficient must be between (0,1)" % dropout
         )
 
@@ -53,7 +53,7 @@ class shallowNet:
         encoded = encoder(x)
         decoded = decoder(encoded)
         model = tf.keras.Model(inputs, decoded)
-        opt = Adam(lr=0.01)
+        opt = Adam(lr=lr)
         model.compile(loss="mse", optimizer=opt)
         model.summary()
         return model
