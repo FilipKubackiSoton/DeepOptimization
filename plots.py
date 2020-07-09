@@ -4,12 +4,13 @@ from tensorflow.keras.layers import Dense, Dropout, Flatten, Input, Reshape
 from tensorflow.keras import Input
 from tensorflow.keras.optimizers import Adam
 import numpy as np
-import util as ut
 from shallowNet.shallowNet import shallowNet, DenseTranspose
 import matplotlib.pyplot as plt 
 import copy
 import matplotlib.cm as cm
 from KnapSack import KnapSack
+import utilsModel as utm
+import utilsGeneral as utg
 
 
 
@@ -74,7 +75,7 @@ def plot_weights_model(model, plot_name="weight_plot_default_name.png", number_o
             ax.set_ylabel("Vissible")
             index+=1
     fig.colorbar(im, ax=axes.ravel().tolist())
-    path = ut.create_plot_path(plot_name)
+    path = utg.create_plot_path(plot_name)
     plt.savefig(path)
     print("[INFO]: Weights of model were saved in the directory: ", path)
 
@@ -95,7 +96,7 @@ def plot_model_loss(model_fit, plot_name, epochs):
     plt.xlabel("Epoch #")
     plt.ylabel("Loss/Accuracy")
     plt.legend(loc="lower left")
-    path = ut.create_plot_path(plot_name)
+    path = utg.create_plot_path(plot_name)
     plt.savefig(path)
     print("[INFO]: Loss plot was saved in the directory: ", path)
 
@@ -115,7 +116,7 @@ def plot_trajectory_evolution(model, array, plot_name, normalization_factor = 1
         learning_steps - number of steps in evaluation - default 30
         
     """  
-    encoder, decoder = ut.split_model_into_encoder_decoder(model)
+    encoder, decoder = utm.split_model_into_encoder_decoder(model)
     X = np.arange(learning_steps)
     #normalization_factor = ut.hiff_fitness(np.ones((np.shape(array)[-1],)))
     trajectory_samples = []
@@ -127,7 +128,7 @@ def plot_trajectory_evolution(model, array, plot_name, normalization_factor = 1
         current_target_trajectory = []
         current_target_trajectory.append(current_fitness/normalization_factor)
         for i in range(learning_steps-1):
-            output_tensor, output_array, new_fitness = ut.code_flip_decode(current_array, encoder, decoder)
+            output_tensor, output_array, new_fitness = utm.code_flip_decode(current_array, encoder, decoder)
             if new_fitness >= current_fitness:
                 current_fitness = new_fitness
                 current_array = output_array
@@ -138,18 +139,30 @@ def plot_trajectory_evolution(model, array, plot_name, normalization_factor = 1
         plt.plot(X, np.asarray(current_target_trajectory))
     plt.xlabel("learning step")
     plt.ylabel("fitness \ max_fitness")
-    path = ut.create_plot_path(plot_name)
+    path = utg.create_plot_path(plot_name)
     plt.savefig(path)
     print("[INFO]: Trajectory evoultion plot was saved in the directory: ", path)
 
 
-def plot_fitness_development_phase(array, plot_name):
+def plot_fitness_development_phase(model, array, plot_name):
+    """
+    Plot fitnes development phase. 
+
+    Parameters: 
+        model - tf's model based on which we will evaluate 
+        array - set of samples from which a one will be choosen 
+        and will be passed to the transfer_sample_latent_flip 
+        to see how does the model develop 
+    """
+    index = np.random.randint(knapSack.Size)  
+    progress_set_evidence = utm.transfer_sample_latent_flip(model, array[index])[-1]
+
     # construct a plot that plots and saves the training history
-    N = array.shape[0] # size of the array 
+    N = np.shape(progress_set_evidence)[0] # size of the array 
     X = np.arange(0, N) # x range 
     #max_fintess_line = np.ones(N)
     plt.figure()
-    plt.plot(X, array, 'o', label="AutoEncoder")
+    plt.plot(X, progress_set_evidence, 'o', label="AutoEncoder")
     #plt.plot(X, max_fintess_line, lw = 2.8, label="Global Optima")
     #x1, x2, y1, y2 = plt.axis()
     #plt.axis((x1,x2, 0.5,1.01))
@@ -157,7 +170,7 @@ def plot_fitness_development_phase(array, plot_name):
     plt.xlabel("Evolution Step")
     plt.ylabel("Fitness")
     plt.legend(loc="lower left")
-    path = ut.create_plot_path(plot_name)
+    path = utg.create_plot_path(plot_name)
     plt.savefig(path)
     print("[INFO]: Fitness development phase plot was saved in the directory: ", path)
 
@@ -175,7 +188,7 @@ def plot_evolution_model(model, array, plot_name, learning_steps = 50):
     Optional parameters: 
         learning_steps - number of steps of sample evaluation 
     """
-    encoder, decoder = ut.split_model_into_encoder_decoder(model)
+    encoder, decoder = utm.split_model_into_encoder_decoder(model)
     N = np.shape(array)[0] # size of the array 
     index = np.random.randint(N) #choose random index to flip 
     candidate_solution = array[index]# pick up random sample 
@@ -184,7 +197,7 @@ def plot_evolution_model(model, array, plot_name, learning_steps = 50):
     current_fittnes = fitness_function(candidate_solution)
     for i in range(learning_steps-1):
         new_candidate_sol = copy.copy(candidate_solution)
-        output_tensor, output_array, new_fitness = ut.code_flip_decode(new_candidate_sol, encoder, decoder)
+        output_tensor, output_array, new_fitness = utm.code_flip_decode(new_candidate_sol, encoder, decoder)
         if new_fitness >= current_fittnes:
             candidate_solution = output_array 
             current_fittnes = new_fitness
@@ -197,7 +210,7 @@ def plot_evolution_model(model, array, plot_name, learning_steps = 50):
     plt.xlabel("Solution variable")
     plt.ylabel("Development Step")
     plt.colorbar()
-    path = ut.create_plot_path(plot_name)
+    path = utg.create_plot_path(plot_name)
     plt.savefig(path)
     print("[INFO]: Evolution model plot was saved in the directory: ", path)
 
@@ -210,7 +223,7 @@ def plot_global_trajectory(encoder, decoder, array,plot_name, epochs = 20,
     fitness_history = [] 
     iteration = 0 
     while iteration <= epochs and not loop_done:
-        array, trajectory_samples = ut.generate_trajectory_plot(
+        array, trajectory_samples = utm.generate_trajectory_plot(
                                         encoder=encoder, decoder = decoder,
                                         array = array,
                                         learning_steps = learning_steps, 
@@ -236,7 +249,7 @@ def plot_global_trajectory(encoder, decoder, array,plot_name, epochs = 20,
         plt.plot(X, fitness_history[:,i])
     plt.xlabel("epoch")
     plt.ylabel("fitness \ max_fitness")
-    path = ut.create_plot_path(plot_name)
+    path = utg.create_plot_path(plot_name)
     plt.savefig(path)
     print("[INFO]: Global trajectory plot was saved in the directory: ", path)
 
@@ -253,7 +266,7 @@ def plot_latent_acitvation(model, plot_name, validation_set_size = 50):
     """
     # generate the val set 
     print("[INFO] generating validating dataset...")
-    valY = ut.generate_training_sat(knapSack.Size, validation_set_size)
+    valY = utg.generate_training_sat(knapSack.Size, validation_set_size)
 
     features_list = [layer.output for layer in model.layers[:4]]
     new_model = tf.keras.Model(inputs = model.input, outputs = features_list)
@@ -267,7 +280,7 @@ def plot_latent_acitvation(model, plot_name, validation_set_size = 50):
     plt.title("L1 activation")
     plt.xlabel("Node #")
     plt.ylabel("Activation value")
-    path = ut.create_plot_path(plot_name)
+    path = utg.create_plot_path(plot_name)
     plt.savefig(path)
     print("[INFO]: Latent activation plot was saved in the directory: ", path)
 
