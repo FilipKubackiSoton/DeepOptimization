@@ -12,131 +12,227 @@ import shutil
 from KnapSack import KnapSack
 import os
 
-datasets_directory_name = "saved_datasets"
-models_directory_name = "saved_models"
-plots_directory_name = "saved_plots"
+class UtilsGeneral:
+    def __init__(self, knapSack):
+        self.knapSack = knapSack
+        self.fitness_function = self.knapSack.Fitness  
+        self.datasets_directory_name = "saved_datasets"
+        self.models_directory_name = "saved_models"
+        self.plots_directory_name = "saved_plots"
+        self.model_counter = 0
+        self.saved_models = []
+        self.dataset_counter = 0
+        self.saved_datasets = []
 
-knapSack = KnapSack("100_5_25_1")
-fitness_fun = knapSack.Fitness
-
-def fitness_function(argument):
-    knapSack = KnapSack("100_5_25_1")
-    fitness_fun = knapSack.Fitness
-    return fitness_fun(argument)
-
-def save(*args):
-    """
-    Pass list of either of models or datasets.
-    They will be saved in the respective directories:
-    models - models_directory_name
-    plots - plots_directory_name
-    """
-
-
-    def save_model(model):
+    def save(self, *args):
         """
-        Save model in the directory saved_model. 
-        The model will not be saved if it's alreday saved. 
-        
-        Parameters: 
-            model - TF's model 
-        
+        Pass list of either of models or datasets.
+        They will be saved in the respective directories:
+        models - models_directory_name
+        plots - plots_directory_name
         """
-        if model in save.saved_models:
-            print("[INFO]: This model was already saved!!!")
-        else:
-            save.saved_models.append(model)  # append list of saved models
-            save.model_counter += 1  # get number of saved model
-            model_name = str(
-                "model_" + str(save.model_counter)
-            )  # consruct name of the model
-            model_dir = os.path.join(models_directory_name, model_name)  # model dir
-            model_path = Path(model_dir)  # model path
-            # create model dir or if it's empty clean it
+
+
+        def save_model(model):
+            """
+            Save model in the directory saved_model. 
+            The model will not be saved if it's alreday saved. 
+            
+            Parameters: 
+                model - TF's model 
+            
+            """
+            if model in self.saved_models:
+                print("[INFO]: This model was already saved!!!")
+            else:
+                self.saved_models.append(model)  # append list of saved models
+                self.model_counter += 1  # get number of saved model
+                model_name = str(
+                    "model_" + str(self.model_counter)
+                )  # consruct name of the model
+                model_dir = os.path.join(self.models_directory_name, model_name)  # model dir
+                model_path = Path(model_dir)  # model path
+                # create model dir or if it's empty clean it
+                try:
+                    model_path.rmdir()
+                except OSError as e:
+                    print(f"Error: {model_path} : {e.strerror}")
+                model_path.mkdir(exist_ok=True, parents=True)
+
+                # Save the entire model
+                model.save(model_dir)
+                if os.path.exists(model_path):
+                    shutil.rmtree(model_path)
+                os.makedirs(model_path)
+                model.save(model_path)
+                print("[INFO]: This model was saved in the directory: ", model_path)
+
+
+        def save_dataset(dataset):
+            """
+            Save data set used in training DO Networks. 
+
+            Parameters:
+                dataset - dataset we want to save 
+            """
+            self.dataset_counter += 1
+            self.saved_datasets.append(dataset)
+            dataset_dir = self.datasets_directory_name + "/training_dataset_{}.npy".format(self.dataset_counter)
+            dataset_path = Path(self.datasets_directory_name)
             try:
-                model_path.rmdir()
+                dataset_path.rmdir()
             except OSError as e:
-                print(f"Error: {model_path} : {e.strerror}")
-            model_path.mkdir(exist_ok=True, parents=True)
+                print(f"Error: {dataset_path} : {e.strerror}")
+            dataset_path.mkdir(exist_ok=True, parents=True)
+            if os.path.exists(dataset_path) and self.dataset_counter == 1:
+                shutil.rmtree(dataset_path)
+                os.makedirs(dataset_path)
+            with open(dataset_dir, 'wb') as f:
+                np.save(f, dataset)
+            print("[INFO]: Dataset was saved in the directory: ", dataset_path)
 
-            # Save the entire model
-            model.save(model_dir)
-            if os.path.exists(model_path):
-                shutil.rmtree(model_path)
-            os.makedirs(model_path)
-            model.save(model_path)
-            print("[INFO]: This model was saved in the directory: ", model_path)
+        model_type = tf.python.keras.engine.training.Model
+        dataset_type = np.ndarray
+        for instance_to_save in args:      
+            if isinstance(instance_to_save, model_type ):
+                save_model(instance_to_save)
+            elif isinstance(instance_to_save, dataset_type):
+                save_dataset(instance_to_save)
+            else:
+                print(str(instance_to_save), " cannot be saved: it's not an model or a dataset")
+            
 
 
-    def save_dataset(dataset):
-        """
-        Save data set used in training DO Networks. 
 
-        Parameters:
-            dataset - dataset we want to save 
-        """
-        save.dataset_counter += 1
-        save.saved_datasets.append(dataset)
-        dataset_dir = datasets_directory_name + "/training_dataset_{}.npy".format(save.dataset_counter)
-        dataset_path = Path(datasets_directory_name)
-        try:
-            dataset_path.rmdir()
-        except OSError as e:
-            print(f"Error: {dataset_path} : {e.strerror}")
-        dataset_path.mkdir(exist_ok=True, parents=True)
-        if os.path.exists(dataset_path) and save.dataset_counter == 1:
-            shutil.rmtree(dataset_path)
-            os.makedirs(dataset_path)
-        with open(dataset_dir, 'wb') as f:
-            np.save(f, dataset)
-        print("[INFO]: Dataset was saved in the directory: ", dataset_path)
+    def load_models(self, *model_index):
+        def get_model(model_index):
+            model_dir = self.models_directory_name + "/model_{}".format(model_index)
+            return tf.keras.models.load_model(model_dir)
+            
+        model_list = []
+        for m_i in model_index:
+            model_list.append(get_model(m_i))
+        return model_list
 
-    model_type = tf.python.keras.engine.training.Model
-    dataset_type = np.ndarray
-    for instance_to_save in args:      
-        if isinstance(instance_to_save, model_type ):
-            save_model(instance_to_save)
-        elif isinstance(instance_to_save, dataset_type):
-            save_dataset(instance_to_save)
-        else:
-            print(str(instance_to_save), " cannot be saved: it's not an model or a dataset")
+    def load_datasets(self, *dataset_index):
+        def get_dataset(dataset_index):
+            dataset_dir = self.datasets_directory_name + "/training_dataset_{}.npy".format(dataset_index)
+            return np.load(dataset_dir)
+
+        datasets_list = []
+        for d_i in dataset_index:
+            datasets_list.append(get_dataset(d_i))
+        return datasets_list
         
+    def create_plot_path(self, name):
+        return Path(os.path.join(self.plots_directory_name, name))
 
-save.model_counter = 0
-save.saved_models = []
 
-save.dataset_counter = 0
-save.saved_datasets = []
+    def rand_bin_array(self, K, N):
+        """
+        THe function return random binary string. 
+        The string has K - 0's adn N-K - 1's
+        """
+        arr = np.zeros(N)
+        arr[:K] = 1
+        np.random.shuffle(arr)
+        return arr
 
-def load_models(*model_index):
-    def get_model(model_index):
-        model_dir = models_directory_name + "/model_{}".format(model_index)
-        return tf.keras.models.load_model(model_dir)
+    def hiff_fitness(self, array):
+
+        """
+        Calculate and return value related to h-iff 
+        assignment to the binary string of array. 
+        """
+
+        def f(val):
+            if val == 1 or val == 0:
+                return 1
+            else:
+                return 0
+
+        def t(left, right):
+            if left == 1 and right == 1:
+                return 1
+            elif left == 0 and right == 0:
+                return 0
+            else:
+                return None
+
+        def val_recursive(array, flor, sum):
+            if flor > levels:
+                return sum
+            arr = []
+            power = 2 ** flor
+            for i in range(0, 2 ** (levels - flor) - 1, 2):
+                arr.append(t(array[i], array[i + 1]))
+                sum = sum + (f(array[i]) + f(array[i + 1])) * power
+            return val_recursive(arr, flor + 1, sum)
+
+        size = len(array)
+        if not (size / 2).is_integer():
+            raise ValueError("Array size must be power of 2.")
+        levels = int(math.log2(size))
+        sum = 0
+        return val_recursive(array, 0, sum)
+
+
+    def flip(self, solution, size, index=None):
+            """
+            I do not know what this method is used for. 
+            I assume it performs random bit flip 
+            """
+            if index == None: 
+                index = np.random.randint(size)
+            solution[index] *= -1
+            other_indx = np.random.randint(size)
+            solution[other_indx] *= -1
+            return
+
+    def flip_and_update(self, current_solution, flip, debuge_variation=False):
+        size = len(current_solution)
+        rand_index = np.random.randint(size)
+        new_solution = np.copy(current_solution)
+        flip(new_solution, size)
+        new_fitness = self.fitness_function(new_solution)
+        if new_fitness >= self.fitness_function(current_solution): 
+            current_solution = new_solution
+        if debuge_variation: 
+            print("New: ", new_fitness)
+        return current_solution
         
-    model_list = []
-    for m_i in model_index:
-        model_list.append(get_model(m_i))
-    return model_list
+    def initialize_solution(self, size):
+        return np.zeros(size)-1
 
-def load_datasets(*dataset_index):
-    def get_dataset(dataset_index):
-        dataset_dir = datasets_directory_name + "/training_dataset_{}.npy".format(dataset_index)
-        return np.load(dataset_dir)
+    def generate_training_set(self , sample_size, set_size, debuge_variation=False):
+        """
+        Generate training set. 
 
-    datasets_list = []
-    for d_i in dataset_index:
-        datasets_list.append(get_dataset(d_i))
-    return datasets_list
+        Patameters: 
+            sample_size - size of a solution 
+            set_size - number of elements in the dataset 
+        return np.ndarray of training elements
+
+        """
+        training_set = np.ndarray(shape=(set_size, sample_size))
+        for i in range(set_size):
+            current_solution = self.initialize_solution(sample_size)
+            for k in range(10*sample_size):
+                current_solution = self.flip_and_update(current_solution, self.flip, debuge_variation)
+            if self.fitness_function(current_solution)>0:
+                training_set[i] = current_solution
+            else:
+                k -=1
+        return training_set
+
+
     
-def create_plot_path(name):
-    return Path(os.path.join(plots_directory_name, name))
 
+"""
 def generate_training_sat(N, set_size, debuge_variation=False):
-    """
     Generate training set for H-IFF problem. 
     
     return: binary array of size N to train NN
-    """
     output = np.ndarray(shape=(set_size, N))
 
     for k in range(set_size):
@@ -155,50 +251,4 @@ def generate_training_sat(N, set_size, debuge_variation=False):
         output[k] = knapSack.SolToTrain(candidate_solution) # convert 0's to -1's
         #####output[k] = candidate_solution
     return output
-
-def rand_bin_array(K, N):
     """
-    THe function return random binary string. 
-    The string has K - 0's adn N-K - 1's
-    """
-    arr = np.zeros(N)
-    arr[:K] = 1
-    np.random.shuffle(arr)
-    return arr
-
-def hiff_fitness(array):
-    """
-    Calculate and return value related to h-iff 
-    assignment to the binary string of array. 
-    """
-
-    def f(val):
-        if val == 1 or val == 0:
-            return 1
-        else:
-            return 0
-
-    def t(left, right):
-        if left == 1 and right == 1:
-            return 1
-        elif left == 0 and right == 0:
-            return 0
-        else:
-            return None
-
-    def val_recursive(array, flor, sum):
-        if flor > levels:
-            return sum
-        arr = []
-        power = 2 ** flor
-        for i in range(0, 2 ** (levels - flor) - 1, 2):
-            arr.append(t(array[i], array[i + 1]))
-            sum = sum + (f(array[i]) + f(array[i + 1])) * power
-        return val_recursive(arr, flor + 1, sum)
-
-    size = len(array)
-    if not (size / 2).is_integer():
-        raise ValueError("Array size must be power of 2.")
-    levels = int(math.log2(size))
-    sum = 0
-    return val_recursive(array, 0, sum)

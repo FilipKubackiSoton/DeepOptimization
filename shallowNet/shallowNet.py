@@ -55,7 +55,7 @@ class shallowNet:
         model = tf.keras.Model(inputs, decoded)
         opt = Adam(lr=lr)
         model.compile(loss="mse", optimizer=opt)
-        model.summary()
+        #model.summary()
         return model
 
 
