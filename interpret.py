@@ -28,7 +28,7 @@ utp.plot_evolution_model(model3, train1, "evolution_plot_model_3_train1.png")
 utp.plot_weights_model(model1, "weights_plot_model_1.png")
 utp.plot_weights_model(model2, "weights_plot_model_2.png")
 utp.plot_weights_model(model3, "weights_plot_model_3.png")
-"""
+
 utp.plot_trajectory_evolution(knapSack.Size, plot_name = "trajectory_plot_evolution_no_model.png" )
 utp.plot_trajectory_evolution(knapSack.Size, model = model1, plot_name = "trajectory_plot_evolution_model1.png" )
 utp.plot_trajectory_evolution(knapSack.Size, model = model2, plot_name = "trajectory_plot_evolution_model2.png" )
@@ -37,4 +37,4 @@ utp.plot_trajectory_evolution(knapSack.Size, model = model3, plot_name = "trajec
 utp.plot_fitness_development_phase(model1, train1, plot_name="fitness_plot_development_model_1.png")
 utp.plot_fitness_development_phase(model2, train1, plot_name="fitness_plot_development_model_2.png")
 utp.plot_fitness_development_phase(model3, train1, plot_name="fitness_plot_development_model_3.png")
-"""
+
