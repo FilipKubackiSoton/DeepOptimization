@@ -14,6 +14,7 @@ import utilsGeneral as utg
 class UtilsModel:
     def __init__(self, utg):
         self.utg = utg
+        self.search = self.utg.flip
         self.knapSack = utg.knapSack
         self.fitness_function = self.knapSack.Fitness  
 
@@ -28,7 +29,7 @@ class UtilsModel:
             show_summary = False - show summary of encoder and decoder 
 
         Returns:
-            encoder, decoder
+            encoder, decoder of types tensorflow.model
         """
         if show_summary:
             print("[INFO]: Extracting encoder and decoder from the model")
@@ -61,13 +62,13 @@ class UtilsModel:
             decoder_.summary()
         return encoder_, decoder_
         
-    def code_flip_decode(self, array, encoder, decoder, search, input_size=None, latent_size=None,  debuge_variation=False):
+    def code_flip_decode(self, array, encoder, decoder, search = None, input_size=None, latent_size=None,  debuge_variation=False):
         """
         Apply random bit flip in the latent space. 
         encode -> flip - > decode 
 
         Parameters: 
-            array - array representing binary array 
+            array - sample binary array which will be decoded->searched->decoded 
             encoder - encoder reducing dimensionality
             decoder - decoder retrieving values from the latent space 
             search - function to change encoded representation
@@ -76,20 +77,24 @@ class UtilsModel:
             debuge_variation - show info useful fo debuging 
 
         Returns: 
-            output_array_binary, new_fitness
+            output_array_binary - binarized array efter going through encoder->decoder
+            new_fitness - fitness of the ourput_array_binary 
         """
         if input_size == None:
-            input_size = len(array)
+            input_size = len(array) # if input_size is implicit do not waist time to calcule it
         if latent_size == None:
-            latent_size = np.shape(encoder.layers[-1].get_weights()[0])[-1]
-        encoded_solution = encoder(np.expand_dims(array, axis = 0)).numpy().flatten()
-        index = 1 
-        search(encoded_solution, latent_size)
-        changed_encoded_solution = np.copy(encoded_solution)
-        new_tensor = decoder(encoded_solution.reshape(1,latent_size))
+            latent_size = np.shape(encoder.layers[-1].get_weights()[0])[-1] # if latent_size is implicit do not waist time to calcule it
+        
+        encoded_solution = encoder(np.expand_dims(array, axis = 0)).numpy().flatten() # encode array 
+        if search == None:
+            self.search(encoded_solution, latent_size) # modify encoded representation using default search function
+        else:
+            search(encoded_solution, latent_size) # modify encoded representation using passed function 
+        new_tensor = decoder(encoded_solution.reshape(1,latent_size)) # decode changed solution 
         output_array_binary = np.where(new_tensor.numpy()[-1] > 0.0, 1, -1)  # binarize decoded tensor around 0.0
-        new_fitness = self.fitness_function(output_array_binary)
-        if debuge_variation:
+        new_fitness = self.fitness_function(output_array_binary) # calculate new fitness
+        
+        if debuge_variation: # show info for debuging 
             print(
                 "Input fitness: ",
                 self.fitness_function(array),
@@ -98,36 +103,42 @@ class UtilsModel:
             )
             print("Input: ", array)
             print("Encoded: ", encoded_solution)
-            print("Encoded fliped, index: ", index, " : ",changed_encoded_solution )
             print("Decoded: ", new_tensor.numpy())
             print("Decoder binary: ", output_array_binary, "\n")
+
         return output_array_binary, new_fitness
 
 
-    def transfer_sample_latent_flip(self, array, encoder, decoder, search, learning_steps_coef = 10, normalization_factor = 1, debuge_variation=False):
+    def transfer_sample_latent_flip(self, array, encoder, decoder, search=None, learning_steps_coef = 10, normalization_factor = 1, debuge_variation=False):
         """
-        Execute random bit flip in the latent space for 10 * size_of_sample, and
-        update the sample if the fitness after the flip and decoding has improved
+        Execute search function in the latent space for 10 * size_of_sample times
+        Update the sample if the fitness after the flip and decoding improve 
 
         Parameters:
-            model - model to evalueate 
-            array - sample to encode->flip->decoder 
+            array - sample array to encode->search->decode
+            encoder - model encodeing a solution 
+            decoder - model decodeing a solution 
+        Optionals:
+            search (self.search) - function executing search in encoded solution 
+            laerning_steps_coef (10) - it * size of the array will give us number serach
+            normalization_factor (1) - factor which normalize all results 
+            debuge_variation (False) - variable indicating debug mode 
 
         Returns:
             array - improved initial sample with greater fitness   
         """
-        #encoder, decoder = self.split_model_into_encoder_decoder(model)
-        N = np.shape(array)[-1]
-        current_fitness = self.fitness_function(array)
-        progress_holder = []
-        #normalization_factor = self.fitness_function(np.ones((N,)))
-        learning_steps = N * learning_steps_coef
+        N = np.shape(array)[-1] # get the length of the arra y
+        current_fitness = self.fitness_function(array) # calculare current solution fitness 
+        progress_holder = [] # initialize list hodling changes 
+        learning_steps = N * learning_steps_coef # calculate number of steps to transfer sample 
+        if search == None: 
+            search = self.search # if search function is not specified get the default one 
 
         for i in range(learning_steps):
-            output_array, new_fitness = self.code_flip_decode(
-                array, encoder, decoder, search= self.utg.flip
+            output_array, new_fitness = self.code_flip_decode( # move soultion through encoder -> decoder,
+                array, encoder, decoder, search= search         # modifying encoded representation 
             )
-            progress_holder.append(new_fitness)
+            progress_holder.append(new_fitness) # append container holding history of modyfication 
             if new_fitness >= current_fitness:  # compare flip with current  fitness
                 current_fitness = new_fitness
                 array = output_array
@@ -135,36 +146,48 @@ class UtilsModel:
                 print("Current fitness: ", current_fitness)
         return array, np.divide(progress_holder, normalization_factor)
 
-    def generate_enhanced_training_set(self, model, initial_training_set):
+    def generate_enhanced_training_set(self, model, initial_training_set, search = None, dataset_split = 1.0):
         """
         Generate training set based on the transfer_sample_latent_flip method,
         which enhance quality of the samples
 
-        Parameters: 
+        Parameters:
+            model - used to encode and decoder solutions  
             initial_training_set - training set on which latent space modification happens 
-            encoder - model based on which we will genereate new training set
+        Optinals:    
+            search (self.serach) - function modyfing latent representation 
+            dataset_split (1.0) - fraction indicating number of elements in the new dataset
+                                    with respect to the size of the initial_training_set 
 
         Returns:
-            imporoved_training_set (numpy array)  
+            imporoved_training_set of type (numpy array)  
         """
         print("[INFO]: Generating new enhanced data set")
-        encoder, decoder = self.split_model_into_encoder_decoder(model)
-        new_trainig_set = []
-        N = np.shape(initial_training_set)[-1]
-        for array in initial_training_set:
-            new_trainig_set.append(self.transfer_sample_latent_flip(
-                array = array, 
-                encoder = encoder, 
-                decoder = decoder, 
-                search = self.utg.flip)[0])
+        assert dataset_split <=1.0 and dataset_split > 0, "dataset_split must be between (0,1]" # validate dataset_split value 
+        encoder, decoder = self.split_model_into_encoder_decoder(model) # split the model into encoder and decoder 
+        new_trainig_set = [] # initialize holder for new training set 
+        if search == None: 
+            search = self.search # if search function is not specified get the default one 
+        if dataset_split == 1.0:
+            for array in initial_training_set: # execute for every element form the initial_training_set
+                new_trainig_set.append(self.transfer_sample_latent_flip(
+                    array = array, 
+                    encoder = encoder, 
+                    decoder = decoder, 
+                    search = search)[0])
+        else: 
+            new_dataset_size = int(np.shape(initial_training_set)[0] * dataset_split)
+            for i in range(new_dataset_size): # execute for a fraction of elements form the initial_training_set
+                new_trainig_set.append(self.transfer_sample_latent_flip(
+                    array = initial_training_set[i], 
+                    encoder = encoder, 
+                    decoder = decoder, 
+                    search = search)[0])
+
         return np.asarray(new_trainig_set, dtype=np.float32)
 
     def add_layer_to_model(self, model, compression=0.8, dropout=0.2, reg_cof=0.001,lr = 0.001, show_summary=False):
         """
-        To do: 
-        - add activation parameter
-        - add stddev param
-        - add initializer param 
         Add new layer to the middle of the model.
 
         Parameters:
@@ -209,6 +232,7 @@ class UtilsModel:
         new_model.compile(loss="mse", optimizer=opt)  # compile model
         if show_summary:
             new_model.summary()
+            
         return new_model
 
 
@@ -223,7 +247,7 @@ class UtilsModel:
             current_target_trajectory.append(current_fitness / normalization_factor)
             for i in range(learning_steps - 1):
                 output_array, new_fitness = self.code_flip_decode(
-                    current_array, encoder, decoder, search= self.utg.flip
+                    current_array, encoder, decoder, search= self.search
                 )
                 if new_fitness >= current_fitness:
                     current_fitness = new_fitness

@@ -206,7 +206,6 @@ class UtilsPlot:
 
     def plot_trajectory_evolution(self, sample_size, plot_name, sample_number=10, learning_steps=50, model=None, debuge_variation=False):
         """
-        Still to improve
         Generate and save trajectory plot of the model. 
 
         Parameters: 

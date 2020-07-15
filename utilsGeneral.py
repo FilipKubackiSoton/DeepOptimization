@@ -101,9 +101,6 @@ class UtilsGeneral:
             else:
                 print(str(instance_to_save), " cannot be saved: it's not an model or a dataset")
             
-
-
-
     def load_models(self, *model_index):
         def get_model(model_index):
             model_dir = self.models_directory_name + "/model_{}".format(model_index)
@@ -125,8 +122,83 @@ class UtilsGeneral:
         return datasets_list
         
     def create_plot_path(self, name):
+        "Create path to the plots' directory"
         return Path(os.path.join(self.plots_directory_name, name))
 
+    def flip(self, solution, size, index=None):
+            """
+            Execute changes in the encoded representation of a solution.
+
+            Parameters:
+                solution - form of a container representing solution we modify 
+                size - size of the solution 
+            Oprionals: 
+                index (None - random) - index which we would like to change 
+            """
+            if index == None: 
+                index = np.random.randint(size)
+            solution[index] *= -1
+            other_indx = np.random.randint(size)
+            solution[other_indx] *= -1
+            return
+
+    def flip_and_update(self, current_solution, search, debuge_variation=False):
+        """
+        Execute search function on the current_solution. 
+        Update current_solution ifthe fitness value of 
+        the modified solutin is greater, else does no change 
+        
+        Parameters:
+            current_solution - container holding solution we modify 
+            search - function searching and modyfing encoded representation 
+        Optionals: 
+            debug_variation (False) - turning on/off debug mode 
+        Return: 
+            conteiner, with the same type as current_solution
+        """
+        size = len(current_solution) # get the length of the solutin 
+        rand_index = np.random.randint(size) # pick up a random index 
+        new_solution = np.copy(current_solution) # copy current_solution 
+        search(new_solution, size) # execute search function on the copied solutino 
+        new_fitness = self.fitness_function(new_solution) # calculate fitness of the new solution
+        if new_fitness >= self.fitness_function(current_solution): 
+            current_solution = new_solution # update current solutin if fitness is better 
+        if debuge_variation: 
+            print("New: ", new_fitness)
+        return current_solution
+        
+    def initialize_solution(self, size):
+        """
+        Return array of (-1)'s
+        """
+        return np.zeros(size)-1
+
+    def generate_training_set(self , sample_size, set_size, learning_steps_coef = 10, debuge_variation=False):
+        """
+        Generate training set. 
+
+        Patameters: 
+            sample_size - size of a solution 
+            set_size - number of elements in the dataset 
+        Optionals: 
+            laerning_steps_coef (10) - it * size of the solution will give us number serach
+            debug_variation (False) - turning on/off debug mode
+
+        return np.ndarray of training elements
+
+        """
+        training_set = np.ndarray(shape=(set_size, sample_size)) # initialize container 
+        number_of_search = int(sample_size * learning_steps_coef) # get the number of search 
+        for i in range(set_size): 
+            current_solution = self.initialize_solution(sample_size) # initialize new solutin 
+            for k in range(number_of_search): # execute search 
+                current_solution = self.flip_and_update(current_solution, self.flip, debuge_variation) #search and update solutin 
+            if self.fitness_function(current_solution)>0: # if fitness is below 0 (does not fulfill constrains)
+                training_set[i] = current_solution          # reject such sample 
+            else:
+                k -=1
+
+        return training_set
 
     def rand_bin_array(self, K, N):
         """
@@ -175,57 +247,6 @@ class UtilsGeneral:
         levels = int(math.log2(size))
         sum = 0
         return val_recursive(array, 0, sum)
-
-
-    def flip(self, solution, size, index=None):
-            """
-            I do not know what this method is used for. 
-            I assume it performs random bit flip 
-            """
-            if index == None: 
-                index = np.random.randint(size)
-            solution[index] *= -1
-            other_indx = np.random.randint(size)
-            solution[other_indx] *= -1
-            return
-
-    def flip_and_update(self, current_solution, flip, debuge_variation=False):
-        size = len(current_solution)
-        rand_index = np.random.randint(size)
-        new_solution = np.copy(current_solution)
-        flip(new_solution, size)
-        new_fitness = self.fitness_function(new_solution)
-        if new_fitness >= self.fitness_function(current_solution): 
-            current_solution = new_solution
-        if debuge_variation: 
-            print("New: ", new_fitness)
-        return current_solution
-        
-    def initialize_solution(self, size):
-        return np.zeros(size)-1
-
-    def generate_training_set(self , sample_size, set_size, debuge_variation=False):
-        """
-        Generate training set. 
-
-        Patameters: 
-            sample_size - size of a solution 
-            set_size - number of elements in the dataset 
-        return np.ndarray of training elements
-
-        """
-        training_set = np.ndarray(shape=(set_size, sample_size))
-        for i in range(set_size):
-            current_solution = self.initialize_solution(sample_size)
-            for k in range(10*sample_size):
-                current_solution = self.flip_and_update(current_solution, self.flip, debuge_variation)
-            if self.fitness_function(current_solution)>0:
-                training_set[i] = current_solution
-            else:
-                k -=1
-        return training_set
-
-
     
 
 """

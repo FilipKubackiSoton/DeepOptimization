@@ -54,6 +54,8 @@ H1 = model1.fit(
     verbose=0)
 utp.plot_model_loss(H1, "loss_plot_model_1.png", epochs)
 
+#trainY2 = utm.generate_enhanced_training_set(model1, trainY1)
+#utg.save(trainY2)
 
 model2 = shallowNet.build(
     input_shape=knapSack.Size, 
