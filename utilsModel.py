@@ -188,7 +188,7 @@ class UtilsModel:
 
     def add_layer_to_model(self, model, compression=0.8, dropout=0.2, reg_cof=0.001,lr = 0.001, show_summary=False):
         """
-        Add new layer to the middle of the model.
+        Add new layer to the middle of the model. 
 
         Parameters:
             model - model to which we would like to add new layer 

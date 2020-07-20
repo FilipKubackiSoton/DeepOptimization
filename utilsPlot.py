@@ -14,6 +14,7 @@ class UtilsPlot:
         self.utg = utilsGeneral
         self.utm = utilsModel
         self.fitness_function = self.utg.fitness_function
+        self.search = self.utg.flip
 
     def plot_weights_model(self, model, plot_name="weight_plot_default_name.png", number_of_deep_layers_to_show = None):
         """
@@ -100,7 +101,7 @@ class UtilsPlot:
     
 
 
-    def plot_fitness_development_phase(self, model, array, plot_name):
+    def plot_fitness_development_phase(self, model, array, search = None, plot_name = None):
         """
         Plot fitnes development phase. 
 
@@ -112,11 +113,13 @@ class UtilsPlot:
         """
         index = np.random.randint(self.utg.knapSack.Size)  
         encoder, decoder = self.utm.split_model_into_encoder_decoder(model)
+        if search == None:
+            search = self.search # modify encoded representation using default search function
         progress_set_evidence = self.utm.transfer_sample_latent_flip(
             array = array[index], 
             encoder = encoder, 
             decoder = decoder, 
-            search = self.utg.flip)[-1]
+            search = search)[-1]
 
         # construct a plot that plots and saves the training history
         N = np.shape(progress_set_evidence)[0] # size of the array 
@@ -127,12 +130,13 @@ class UtilsPlot:
         plt.xlabel("Evolution Step")
         plt.ylabel("Fitness")
         plt.legend(loc="lower left")
-        path = self.utg.create_plot_path(plot_name)
-        plt.savefig(path)
-        print("[INFO]: Fitness development phase plot was saved in the directory: ", path)
+        if plot_name != None:
+            path = self.utg.create_plot_path(plot_name)
+            plt.savefig(path)
+            print("[INFO]: Fitness development phase plot was saved in the directory: ", path)
 
 
-    def plot_evolution_model(self, model, array, plot_name, learning_steps = 50, debuge_variation=False):
+    def plot_evolution_model(self, model, array, plot_name = None, search = None, learning_steps = 50, debuge_variation=False):
         """
         Generate and save evolution plot of the model. 
 
@@ -144,6 +148,8 @@ class UtilsPlot:
         Optional parameters: 
             learning_steps - number of steps of sample evaluation 
         """
+        if search == None:
+            search = self.search # modify encoded representation using default search function
         encoder, decoder = self.utm.split_model_into_encoder_decoder(model)
         N = np.shape(array)[0] # size of the array 
         index = np.random.randint(N) #choose random index to flip 
@@ -157,7 +163,7 @@ class UtilsPlot:
                         array = new_candidate_sol, 
                         encoder = encoder, 
                         decoder = decoder, 
-                        search = self.utg.flip,
+                        search = search,
                         debuge_variation= debuge_variation
                         )
             if new_fitness >= current_fittnes:
@@ -172,9 +178,10 @@ class UtilsPlot:
         plt.xlabel("Solution variable")
         plt.ylabel("Development Step")
         plt.colorbar()
-        path = self.utg.create_plot_path(plot_name)
-        plt.savefig(path)
-        print("[INFO]: Evolution model plot was saved in the directory: ", path)
+        if plot_name != None:
+            path = self.utg.create_plot_path(plot_name)
+            plt.savefig(path)
+            print("[INFO]: Evolution model plot was saved in the directory: ", path)
 
     def plot_latent_acitvation(self, model, plot_name, validation_set_size = 50):
         """
@@ -204,7 +211,7 @@ class UtilsPlot:
         plt.savefig(path)
         print("[INFO]: Latent activation plot was saved in the directory: ", path)
 
-    def plot_trajectory_evolution(self, sample_size, plot_name, sample_number=10, learning_steps=50, model=None, debuge_variation=False):
+    def plot_trajectory_evolution(self, sample_size, plot_name = None, search = None, sample_number=10, learning_steps=50, model=None, debuge_variation=False):
         """
         Generate and save trajectory plot of the model. 
 
@@ -215,8 +222,13 @@ class UtilsPlot:
             model - model based on which samples will be changed 
         """
         global_history = []
+        final_solutions = []
+        max_fitness = 0
         if model != None: 
             encoder, decoder = self.utm.split_model_into_encoder_decoder(model)
+        
+        if search == None:
+            search = self.search # modify encoded representation using default search function
 
         global_history = []
         for i in range(sample_number):
@@ -229,7 +241,7 @@ class UtilsPlot:
                 if model == None:
                     current_solution = self.utg.flip_and_update(
                         current_solution = current_solution, 
-                        flip = self.utg.flip, 
+                        search = search, 
                         debuge_variation = debuge_variation)
                 else:
                     current_fitness = self.fitness_function(current_solution)
@@ -237,13 +249,21 @@ class UtilsPlot:
                         array = current_solution, 
                         encoder = encoder, 
                         decoder = decoder, 
-                        search = self.utg.flip,
+                        search = search,
                         debuge_variation= debuge_variation
                         )
                     if new_fitness >= current_fitness: 
                         current_solution = new_solution
-                sample_history.append(self.fitness_function(current_solution))
+                    if k == learning_steps - 2:
+                        final_solutions.append(new_solution)
+                fitness_to_append = self.fitness_function(current_solution)
+
+                if max_fitness <= fitness_to_append:
+                    max_fitness = fitness_to_append
+
+                sample_history.append(fitness_to_append)
             global_history.append(np.asarray(sample_history))
+        
 
         plt.figure()
         plt.title("Example Solution Trajectory")
@@ -252,9 +272,13 @@ class UtilsPlot:
             plt.plot(X, global_history[j])
         plt.xlabel("epoch")
         plt.ylabel("fitness \ max_fitness")
-        path = self.utg.create_plot_path(plot_name)
-        plt.savefig(path)
-        print("[INFO]: Trajectory evoultion plot was saved in the directory: ", path)
+        if plot_name != None:
+            path = self.utg.create_plot_path(plot_name)
+            plt.savefig(path)
+            print("[INFO]: Trajectory evoultion plot was saved in the directory: ", path)
+        else:
+            plt.show()
+        return max_fitness, final_solutions
 
     """
     def plot_global_trajectory(self, encoder, decoder, array,plot_name, epochs = 20, 
