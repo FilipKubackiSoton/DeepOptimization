@@ -125,7 +125,7 @@ class UtilsGeneral:
         "Create path to the plots' directory"
         return Path(os.path.join(self.plots_directory_name, name))
 
-    def flip(self, solution, size, index=None):
+    def flip(self, solution, size=None, index=None):
             """
             Execute changes in the encoded representation of a solution.
 
@@ -135,6 +135,8 @@ class UtilsGeneral:
             Oprionals: 
                 index (None - random) - index which we would like to change 
             """
+            if size = None: 
+                size = len(solution)
             if index == None: 
                 index = np.random.randint(size)
             solution[index] *= -1

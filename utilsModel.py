@@ -65,7 +65,7 @@ class UtilsModel:
     def code_flip_decode(self, array, encoder, decoder, search = None, input_size=None, latent_size=None,  debuge_variation=False):
         """
         Apply random bit flip in the latent space. 
-        encode -> flip - > decode 
+        encode -> flip -> decode 
 
         Parameters: 
             array - sample binary array which will be decoded->searched->decoded 
@@ -84,10 +84,11 @@ class UtilsModel:
             input_size = len(array) # if input_size is implicit do not waist time to calcule it
         if latent_size == None:
             latent_size = np.shape(encoder.layers[-1].get_weights()[0])[-1] # if latent_size is implicit do not waist time to calcule it
-        
-        encoded_solution = encoder(np.expand_dims(array, axis = 0)).numpy().flatten() # encode array 
         if search == None:
             self.search(encoded_solution, latent_size) # modify encoded representation using default search function
+
+        encoded_solution = encoder(np.expand_dims(array, axis = 0)).numpy().flatten() # encode array 
+        
         else:
             search(encoded_solution, latent_size) # modify encoded representation using passed function 
         new_tensor = decoder(encoded_solution.reshape(1,latent_size)) # decode changed solution 
@@ -315,61 +316,4 @@ def code_flip_decode(array, encoder, decoder, debuge_variation=False):
     return output_tensor, output_array_binary, new_fitness
 """
 
-"""
-Everything below is for improvement
-"""
-"""
 
-def generate_evol_plot(N=32, path="solution_development_plot.png", learning_steps=50):
-    candidate_solution = np.random.randint(2, size=N)
-    sol_evol = []
-    sol_evol.append(candidate_solution)
-    for i in range(learning_steps):
-        index = np.random.randint(N)
-        current_fit = hiff_fitness(candidate_solution)
-        index = np.random.randint(N)
-        new_candidate_sol = copy.copy(candidate_solution)
-        new_candidate_sol[index] = 1 - new_candidate_sol[index]
-        new_fit = hiff_fitness(new_candidate_sol)
-        if new_fit >= current_fit:
-            candidate_solution = new_candidate_sol
-
-        sol_evol.append(candidate_solution)
-
-    tmp = np.asarray(sol_evol)
-    plt.figure()
-    plt.imshow(tmp, interpolation="nearest", cmap=cm.Greys_r)
-    plt.title("Solution Development at Evolution Step 1")
-    plt.xlabel("Solution variable")
-    plt.ylabel("Development Step")
-    plt.colorbar()
-    plt.savefig(path)
-
-
-def generate_sol_plot(
-    N=32, target_size=10, path="trajectory_plot.png", learning_steps=70, normalization_factor = 1
-):
-    X = np.arange(learning_steps)
-    #normalization_factor = hiff_fitness(np.ones((N,)))
-    plt.figure()
-    plt.title("Example Solution Trajectory at Evolution Step 1")
-    for k in range(target_size):
-        candidate_solution = np.random.randint(2, size=N)
-        solution_fitness = hiff_fitness(candidate_solution)
-        current_target_trajectory = [solution_fitness / normalization_factor]
-        for i in range(learning_steps - 1):
-            index = np.random.randint(N)
-            new_candidate_sol = copy.copy(candidate_solution)
-            new_candidate_sol[index] = 1 - new_candidate_sol[index]  # apply variation
-            new_fitness = hiff_fitness(new_candidate_sol)  # check the change
-            if new_fitness >= solution_fitness:
-                candidate_solution = new_candidate_sol
-                solution_fitness = new_fitness
-                current_target_trajectory.append(new_fitness / normalization_factor)
-            else:
-                current_target_trajectory.append(current_target_trajectory[-1])
-        plt.plot(X, current_target_trajectory)
-    plt.xlabel("learning step")
-    plt.ylabel("fitness \ max_fitness")
-    plt.savefig(path)
-"""
