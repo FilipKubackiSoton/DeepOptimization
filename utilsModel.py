@@ -84,11 +84,9 @@ class UtilsModel:
             input_size = len(array) # if input_size is implicit do not waist time to calcule it
         if latent_size == None:
             latent_size = np.shape(encoder.layers[-1].get_weights()[0])[-1] # if latent_size is implicit do not waist time to calcule it
+        encoded_solution = encoder(np.expand_dims(array, axis = 0)).numpy().flatten() # encode array 
         if search == None:
             self.search(encoded_solution, latent_size) # modify encoded representation using default search function
-
-        encoded_solution = encoder(np.expand_dims(array, axis = 0)).numpy().flatten() # encode array 
-        
         else:
             search(encoded_solution, latent_size) # modify encoded representation using passed function 
         new_tensor = decoder(encoded_solution.reshape(1,latent_size)) # decode changed solution 

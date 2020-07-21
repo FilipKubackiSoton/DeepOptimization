@@ -255,7 +255,7 @@ class UtilsPlot:
                     if new_fitness >= current_fitness: 
                         current_solution = new_solution
                     if k == learning_steps - 2:
-                        final_solutions.append(new_solution)
+                        final_solutions.append(current_solution)
                 fitness_to_append = self.fitness_function(current_solution)
 
                 if max_fitness <= fitness_to_append:

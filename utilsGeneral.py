@@ -135,7 +135,7 @@ class UtilsGeneral:
             Oprionals: 
                 index (None - random) - index which we would like to change 
             """
-            if size = None: 
+            if size == None: 
                 size = len(solution)
             if index == None: 
                 index = np.random.randint(size)
