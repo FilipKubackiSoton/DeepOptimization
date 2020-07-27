@@ -1,7 +1,8 @@
 import tensorflow as tf
 from tensorflow.keras.layers import Dense, Input, Dropout, Flatten
-from tensorflow.keras.optimizers import Adam
+import tensorflow.keras.optimizers
 import numpy as np
+
 
 
 class DenseTranspose(tf.keras.layers.Layer):
@@ -31,7 +32,7 @@ class DenseTranspose(tf.keras.layers.Layer):
 
 class shallowNet:
     @staticmethod
-    def build(input_shape=32, compression=0.8, reg_cof=0.001, dropout=0.2, name="NN 1", lr = 0.01):
+    def build(input_shape=32, compression=0.8, reg_cof=0.001, dropout=0.2, name="NN 1", lr = 0.01, loss = "mse", metrics = None, optimizer =  tensorflow.keras.optimizers.Adam):
         assert compression < 1 and compression > 0, (
             "compression coefficient must be between (0,1)" % compression
         )
@@ -53,8 +54,11 @@ class shallowNet:
         encoded = encoder(x)
         decoded = decoder(encoded)
         model = tf.keras.Model(inputs, decoded)
-        opt = Adam(lr=lr)
-        model.compile(loss="mse", optimizer=opt)
+        opt = optimizer(lr=lr)
+        if metrics == None:
+            model.compile(loss=loss, optimizer=opt)
+        else:
+            model.compile(loss=loss, optimizer=opt, metrics=metrics)
         #model.summary()
         return model
 

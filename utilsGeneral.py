@@ -139,7 +139,7 @@ class UtilsGeneral:
                 size = len(solution)
             if index == None: 
                 index = np.random.randint(size)
-            solution[index] *= -1
+            #solution[index] *= -1
             other_indx = np.random.randint(size)
             solution[other_indx] *= -1
             return
@@ -192,13 +192,16 @@ class UtilsGeneral:
         training_set = np.ndarray(shape=(set_size, sample_size)) # initialize container 
         number_of_search = int(sample_size * learning_steps_coef) # get the number of search 
         for i in range(set_size): 
+            
             current_solution = self.initialize_solution(sample_size) # initialize new solutin 
             for k in range(number_of_search): # execute search 
-                current_solution = self.flip_and_update(current_solution, self.flip, debuge_variation) #search and update solutin 
+                current_solution = self.flip_and_update(current_solution, self.flip, False) #search and update solutin 
             if self.fitness_function(current_solution)>0: # if fitness is below 0 (does not fulfill constrains)
                 training_set[i] = current_solution          # reject such sample 
             else:
-                k -=1
+                i -=1
+            if debuge_variation:
+                print(i, self.fitness_function(current_solution))
 
         return training_set
 

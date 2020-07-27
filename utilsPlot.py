@@ -88,12 +88,13 @@ class UtilsPlot:
         # construct a plot that plots and saves the training history
         plt.style.use("ggplot")
         plt.figure()
-        plt.plot(np.arange(0, epochs), model_fit.history["loss"], label="train_loss")
-        plt.plot(np.arange(0, epochs), model_fit.history["val_loss"], label="val_loss")
+        for metrics in list(model_fit.history.keys())[1:]:
+            plt.plot(np.arange(0, epochs), model_fit.history[metrics], label=metrics)
+        
         plt.title("Training Loss and Accuracy\n")
         plt.xlabel("Epoch #")
         plt.ylabel("Loss/Accuracy")
-        plt.legend(loc="lower left")
+        plt.legend()
         path = self.utg.create_plot_path(plot_name)
         plt.savefig(path)
         print("[INFO]: Loss plot was saved in the directory: ", path)
