@@ -32,7 +32,7 @@ class DenseTranspose(tf.keras.layers.Layer):
 
 class shallowNet:
     @staticmethod
-    def build(input_shape=32, compression=0.8, reg_cof=0.001, dropout=0.2, name="NN 1", lr = 0.01, loss = "mse", metrics = None, optimizer =  tensorflow.keras.optimizers.Adam):
+    def build(input_shape=32, compression=0.8, reg_cof=(0.001, 0.001), dropout=0.2, name="NN 1", lr = 0.01, loss = "mse", metrics = None, optimizer =  tensorflow.keras.optimizers.Adam):
         assert compression < 1 and compression > 0, (
             "compression coefficient must be between (0,1)" % compression
         )
@@ -46,7 +46,7 @@ class shallowNet:
             activation="tanh",
             kernel_initializer=tf.keras.initializers.RandomNormal(stddev=0.01),
             bias_initializer=tf.keras.initializers.Zeros(),
-            kernel_regularizer=tf.keras.regularizers.l1(reg_cof),
+            kernel_regularizer=tf.keras.regularizers.L1L2(reg_cof[0], reg_cof[1]),
         )
         decoder = DenseTranspose(dense=encoder)
         # the model

@@ -139,7 +139,7 @@ class UtilsGeneral:
                 size = len(solution)
             if index == None: 
                 index = np.random.randint(size)
-            #solution[index] *= -1
+            solution[index] *= -1
             other_indx = np.random.randint(size)
             solution[other_indx] *= -1
             return

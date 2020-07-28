@@ -98,6 +98,7 @@ class UtilsPlot:
         path = self.utg.create_plot_path(plot_name)
         plt.savefig(path)
         print("[INFO]: Loss plot was saved in the directory: ", path)
+        return plt
 
     
 
