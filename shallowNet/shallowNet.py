@@ -104,3 +104,52 @@ class shallowNet:
         model.summary()
         return model
 """
+
+
+class NumpyInitializer(tf.keras.initializers.Initializer):
+
+    def __init__(self, bias):
+        self.bias = tf.convert_to_tensor(bias.tolist())
+        
+    def __call__(self, shape, dtype=None):
+        return self.bias 
+
+Direct = "100_5_25_1Knapsack_Layer1\\100_5_25_1Knapsack"
+
+def restore_model_from_numpy(directory):
+
+    def file_iterating(directory):
+        pathlist = Path(directory).rglob("*.npy")
+        layers = {}
+        index = 0
+        for file in pathlist:
+            if index % 2 ==0:
+                layers[int(index/2)] = []
+            layers[int(index/2)].append(np.load(file))
+            index +=1
+            print(file)
+        return layers
+    
+
+    layers = file_iterating(directory)
+    layers_numbers = len(layers)
+
+    inputs = Input(shape = (np.shape(layers[0][1])[0]))
+    x = inputs 
+    for key, value in layers.items():
+        if key< int(layers_numbers/2):
+            x = Dropout(0.)(x)
+        bias_initializer = NumpyInitializer(layers[key][0][0])
+        kernal_initializer = NumpyInitializer(layers[key][1])
+        layer_size = np.shape(layers[key][0])[-1]
+        new_layer = tf.keras.layers.Dense(
+            units = layer_size, 
+            kernel_initializer=kernal_initializer, 
+            bias_initializer = bias_initializer,
+            activation="tanh")
+        new_layer.trainable = False
+        x = new_layer(x)
+        
+    model = tf.keras.Model(inputs, x)
+    model.compile()
+    return model
