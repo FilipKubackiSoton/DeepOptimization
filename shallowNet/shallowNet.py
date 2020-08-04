@@ -33,13 +33,7 @@ class DenseTranspose(tf.keras.layers.Layer):
 class shallowNet:
     @staticmethod
     def build(input_shape=32, compression=0.8, reg_cof=(0.001, 0.001), dropout=0.2, name="NN 1", lr = 0.01, loss = "mse", metrics = None, optimizer =  tensorflow.keras.optimizers.Adam):
-        assert compression < 1 and compression > 0, (
-            "compression coefficient must be between (0,1)" % compression
-        )
-        assert dropout < 1 and dropout >=0, (
-            "dropout coefficient must be between (0,1)" % dropout
-        )
-
+        
         inputs = Input(shape=(input_shape,))
         encoder = Dense(
             int(input_shape * compression),
