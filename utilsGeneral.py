@@ -24,6 +24,86 @@ class UtilsGeneral:
         self.dataset_counter = 0
         self.saved_datasets = []
 
+
+    def restore_model_from_numpy(self, directory, debug_variation=False):
+        """
+        Recreate model from the numpy files. 
+        Numpy files in the directory are ordered by layers
+        and bias numpy matrix comes before numpy weight matrix. 
+
+        In example: 
+            directory-
+                - L1B.npy //numpy bias matrix for layer 1
+                - L1W.npy //numpy weights matrix for layer 1
+                - L2B.npy //numpy bias matrix for layer 2
+                - L2W.npy //numpy weights matrix for layer 2
+
+        Parameters: 
+            directory - path to the directory with numpy files
+        Return: 
+            tf's model recreated from numpy files
+        """
+
+        class NumpyInitializer(tf.keras.initializers.Initializer):
+            # custom class converting numpy arrays to tf's initializers 
+            # used to initialize both kernel and bias
+            def __init__(self, array):
+                # convert numpy array into tensor 
+                self.array = tf.convert_to_tensor(array.tolist())
+                
+            def __call__(self, shape, dtype=None):
+                # return tensor 
+                return self.array 
+
+        def file_iterating(directory):
+            """
+            Iterate over directory and create 
+            dictionary of layers number and it's structure
+
+            layers[layer_number] = [numpy_bias_matrix, numpy_weight_matrix]
+            """
+
+            pathlist = Path(directory).rglob("*.npy") # list of numpy files
+            layers = {} # initialize dictionary 
+            index = 0
+            for file in pathlist: # iterate over file in the directory 
+                if index % 2 ==0:
+                    layers[int(index/2)] = [] # next layer - now key in dictionary
+                layers[int(index/2)].append(np.load(file)) # add to dictionary bias or weight 
+                index +=1
+                if debug_variation:
+                    print(file, ", shape: ", np.shape(np.load(file))) # optional to show list of files we deal with 
+            return layers # return dictionary 
+
+
+        layers = file_iterating(directory) # get dictionary with model structure
+        layers_numbers = len(layers) #optional: calculate model depth
+
+        inputs = Input(shape = (np.shape(layers[0][1])[0])) # create first model input layer
+        x = inputs 
+
+        for key, value in layers.items(): # iterate over all levers in the layers dictionary
+
+            if key< int(layers_numbers/2):# optional: I was adding dropout layers to the first half of the model 
+                x = Dropout(0.)(x) # optional: adding droput layer
+
+            bias_initializer = NumpyInitializer(layers[key][0][0]) # create bias initializer for key's layer 
+            kernal_initializer = NumpyInitializer(layers[key][1]) # create weights initializer for key's layer 
+            layer_size = np.shape(layers[key][0])[-1] # get the size of the layer
+
+            new_layer = tf.keras.layers.Dense( # initialize new Dense layer
+                units = layer_size, 
+                kernel_initializer=kernal_initializer, 
+                bias_initializer = bias_initializer,
+                activation="tanh")
+            new_layer.trainable = False # optional: I was dealing with pretrained model so I disabled trainable
+            x = new_layer(x) # stack layer at the top of the previous layer
+            
+        model = tf.keras.Model(inputs, x) # create tf's model based on the stacked layers 
+        model.compile() # compile model 
+
+        return model # return compiled model 
+
     def save(self, *args):
         """
         Pass list of either of models or datasets.

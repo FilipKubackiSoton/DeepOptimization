@@ -16,8 +16,63 @@ class UtilsModel:
         self.utg = utg
         self.search = self.utg.flip
         self.knapSack = utg.knapSack
-        self.fitness_function = self.knapSack.Fitness  
+        self.fitness_function = self.knapSack.Fitness
 
+    def train_model(self, trainingSet, epochs = 500, compression = 0.8,  batch_size = 10, reg_cof = (0.0001,0.001), dropout = 0.2, lr = 0.001, validation_split = 0.05, metrics = tf.keras.metrics.RootMeanSquaredError() ):
+        modelTmp = shallowNet.build(
+            input_shape=self.knapSack.Size, 
+            reg_cof= reg_cof, 
+            lr = lr, 
+            dropout= dropout, 
+            compression=compression, 
+            metrics = metrics)
+
+        H1 = modelTmp.fit(
+            trainingSet, trainingSet, 
+            validation_split = 0.1,
+            epochs=epochs, 
+            batch_size=batch_size, 
+            shuffle=True,
+            verbose=0)
+        return modelTmp, H1
+
+    def code(self, array, encoder, input_size=None, latent_size=None, debuge_variation=False):
+        """
+        Code solution vector to the latent representation: 
+        Parameters: 
+            array - numpy ndarray to code 
+            encoder - tf's model to encode 
+        
+        Optional Parameters: 
+            input_size - size of the array
+            latent_size - size of the latent space 
+            debug_variation (False) - activate debug mode 
+        """
+        if input_size == None:
+            input_size = len(array) # if input_size is implicit do not waist time to calcule it
+        if latent_size == None:
+            latent_size = np.shape(encoder.layers[-1].get_weights()[0])[-1] # if latent_size is implicit do not waist time to calcule it
+        encoded_solution = encoder(np.expand_dims(array, axis = 0)).numpy().flatten() # encode array 
+        return encoded_solution
+
+    def decod(self, encoded_solution, decoder, latent_size, output_size):
+
+        """
+        Decode solution from the latent representation to the input form. 
+        Decoded solution is discretized [-1, 1] around 0.  
+        
+        Parameters: 
+            encoded_solution - numpy ndarray to decode 
+            encoder - tf's model to encode 
+        
+        Optional Parameters: 
+            latent_size - size of the encoded_solution
+            output_size - size of the decoded solutin
+        """
+        new_tensor = decoder(encoded_solution.reshape(1,latent_size)) # decode changed solution 
+        output_array_binary = np.where(new_tensor.numpy()[-1] > 0.0, 1, -1)  # binarize decoded tensor around 0.0
+        new_fitness = self.fitness_function(output_array_binary) # calculate new fitness
+        return output_array_binary, new_fitness  
 
     def split_model_into_encoder_decoder(self, model, show_summary=False):
         """
@@ -106,7 +161,6 @@ class UtilsModel:
             print("Decoder binary: ", output_array_binary, "\n")
 
         return output_array_binary, new_fitness
-
 
     def transfer_sample_latent_flip(self, array, encoder, decoder, search=None, learning_steps_coef = 10, normalization_factor = 1, debuge_variation=False):
         """
@@ -234,7 +288,6 @@ class UtilsModel:
             
         return new_model
 
-
     def generate_trajectory_plot(self, encoder, decoder, array, target_size=10, learning_steps=30,normalization_factor = 1):
         #normalization_factor = self.fitness_function(np.ones((np.shape(array)[-1],)))
         trajectory_samples = []
@@ -258,6 +311,8 @@ class UtilsModel:
             modified_data_set[k] = current_array
             trajectory_samples.append(current_target_trajectory)
         return modified_data_set, np.asarray(trajectory_samples)
+
+
 
 """
 def code_flip_decode(array, encoder, decoder, debuge_variation=False):
