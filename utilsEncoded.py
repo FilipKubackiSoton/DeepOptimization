@@ -69,6 +69,8 @@ class UtilsEncoded:
         def shuffle_columns_weights_matrix(decoder, pos): 
             #matrix  = decoder.layers[1].get_weights()[1]
             matrix  = extract_weight_matrix(decoder.layers[1].get_weights())
+            if np.shape(matrix)[0]< np.shape(matrix)[1]:
+                matrix = matrix.transpose()
             mat = np.full_like(matrix, 0)
             index = 0
             for i in pos:
