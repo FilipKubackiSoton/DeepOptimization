@@ -224,7 +224,7 @@ class UtilsGeneral:
             solution[other_indx] *= -1
             return
 
-    def flip_and_update(self, current_solution, search, debuge_variation=False):
+    def flip_and_update(self, current_solution, search, debuge_variation=False, *args):
         """
         Execute search function on the current_solution. 
         Update current_solution ifthe fitness value of 
@@ -241,7 +241,7 @@ class UtilsGeneral:
         size = len(current_solution) # get the length of the solutin 
         rand_index = np.random.randint(size) # pick up a random index 
         new_solution = np.copy(current_solution) # copy current_solution 
-        search(new_solution, size) # execute search function on the copied solutino 
+        search(new_solution, *args) # execute search function on the copied solutino 
         new_fitness = self.fitness_function(new_solution) # calculate fitness of the new solution
         if new_fitness >= self.fitness_function(current_solution): 
             current_solution = new_solution # update current solutin if fitness is better 
