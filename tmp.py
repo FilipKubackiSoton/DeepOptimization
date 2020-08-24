@@ -23,6 +23,7 @@ from decimal import Decimal
 import collections
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import random 
+import pickle
 
 knapSack = KnapSack("100_5_25_1")
 utg = UtilsGeneral(knapSack)
@@ -167,7 +168,6 @@ def execute_encoded_changes(sample_set, size_set=500):
         res.append(get_matrix_representation(tmp[2], 100,80))
         words[i] = tmptrain[i]
     return swap, single_add, group, words, res
-swap, single_add, group, words, res = execute_encoded_changes(tmptrain, 2000)
 
 def hidden_vissible_genom_samples_map(action_dic):
     res = {}
@@ -324,7 +324,15 @@ def get_genom_dist(res, hidden_size, visible_size, len_coef = 5, number_of_sampl
         result_genom.append(np.asarray(res_genom))
     return np.asarray(result_acc), np.asarray(result_len), np.asarray(result_genom)
 
+def save_obj(obj, name ):
+    with open( name + '.pkl', 'wb') as f:
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
+swap, single_add, group, words, res = execute_encoded_changes(tmptrain, 4000)
+save_obj(swap, "swap")
+save_obj(group, "group")
+save_obj(single_add,"singleadd")
+save_obj(swap, "swap")
 tmp = get_genom_dist(res, 80, 100,10,300)
 np.save("acc.npy",tmp[0])
 np.save("len.npy",tmp[1])
