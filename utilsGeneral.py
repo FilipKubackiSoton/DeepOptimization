@@ -11,6 +11,8 @@ from tensorflow.keras.optimizers import Adam
 import shutil
 from KnapSack import KnapSack
 import os
+import pickle
+
 
 class UtilsGeneral:
     def __init__(self, knapSack):
@@ -24,6 +26,14 @@ class UtilsGeneral:
         self.dataset_counter = 0
         self.saved_datasets = []
 
+
+    def save_obj(self, obj, name ):
+        with open( name + '.pkl', 'wb') as f:
+            pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+
+    def load_obj(self, name ):
+        with open( name + '.pkl', 'rb') as f:
+            return pickle.load(f)
 
     def restore_model_from_numpy(self, directory, debug_variation=False):
         """
