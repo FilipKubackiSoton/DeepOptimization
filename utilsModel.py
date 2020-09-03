@@ -55,7 +55,7 @@ class UtilsModel:
         encoded_solution = encoder(np.expand_dims(array, axis = 0)).numpy().flatten() # encode array 
         return encoded_solution
 
-    def decod(self, encoded_solution, decoder, latent_size, output_size):
+    def decod(self, encoded_solution, decoder):
 
         """
         Decode solution from the latent representation to the input form. 
@@ -64,58 +64,43 @@ class UtilsModel:
         Parameters: 
             encoded_solution - numpy ndarray to decode 
             encoder - tf's model to encode 
-        
-        Optional Parameters: 
-            latent_size - size of the encoded_solution
-            output_size - size of the decoded solutin
         """
-        new_tensor = decoder(encoded_solution.reshape(1,latent_size)) # decode changed solution 
+        new_tensor = decoder(encoded_solution.reshape(1,len(encoded_solution))) # decode changed solution 
         output_array_binary = np.where(new_tensor.numpy()[-1] > 0.0, 1, -1)  # binarize decoded tensor around 0.0
         new_fitness = self.fitness_function(output_array_binary) # calculate new fitness
         return output_array_binary, new_fitness  
 
-    def split_model_into_encoder_decoder(self, model, show_summary=False):
+    def split_model_into_encoder_decoder(self, model, show = False):
         """
         Extract encoder and decoder from the model.
         The model is splited around the bottle neck. 
 
         Parameters:
             model - model
-            show_summary = False - show summary of encoder and decoder 
-
+            show (False) - show summary of encoder and decoder 
         Returns:
             encoder, decoder of types tensorflow.model
         """
-        if show_summary:
-            print("[INFO]: Extracting encoder and decoder from the model")
-            print(type(model))
-        layer_to_split = model.layers[0]
-        index_to_split = 0
-        # the code here might be simpler stoping at the denseTranspose type, but its more robust
-        for i in range(len(model.layers)):
-            if model.layers[i].output.shape[-1] <= layer_to_split.output.shape[-1]:
-                layer_to_split = model.layers[i]
-                index_to_split = i
-        index_to_split += 1
+        def create_model_from_list_of_layers(*args):
+            model_ = tf.keras.Sequential([*args])
+            model_.compile()
+            return model_
 
-        inputs_encoder = model.inputs
-        x = inputs_encoder
-        for new_layer_encoder in model.layers[1:index_to_split]:
-            x = new_layer_encoder(x)
-        encoder_ = tf.keras.Model(inputs_encoder, x)
+        index_to_split = np.argmin([x.output.shape[-1] for x in model.layers])+1
 
-        latent_shape = encoder_.layers[-1].output.shape[-1]
-        inputs_decoder = Input(shape=latent_shape)
-        y = inputs_decoder
-        for new_layer_decoder in model.layers[index_to_split:]:
-            y = new_layer_decoder(y)
-        decoder_ = tf.keras.Model(inputs_decoder, y)
-        if show_summary:
+        encoder = create_model_from_list_of_layers(*model.layers[:index_to_split])
+
+        decoder_layers = [tf.keras.layers.InputLayer(input_shape = (np.shape(model.layers[index_to_split-1].get_weights()[1])[0],))]
+        decoder_layers += model.layers[index_to_split:]
+        decoder = create_model_from_list_of_layers(*decoder_layers)
+        
+        if show:
             print("---------------------------- ENCODER ----------------------------")
-            encoder_.summary()
+            encoder.summary()
             print("\n---------------------------- DECODER ------------------------")
-            decoder_.summary()
-        return encoder_, decoder_
+            decoder.summary()
+        
+        return encoder, decoder
         
     def code_flip_decode(self, array, encoder, decoder, search = None, input_size=None, latent_size=None,  debuge_variation=False):
         """
@@ -311,6 +296,43 @@ class UtilsModel:
             modified_data_set[k] = current_array
             trajectory_samples.append(current_target_trajectory)
         return modified_data_set, np.asarray(trajectory_samples)
+
+
+"""
+    def split_model_into_encoder_decoder(self, model, show_summary=False):
+
+        if show_summary:
+            print("[INFO]: Extracting encoder and decoder from the model")
+            print(type(model))
+        layer_to_split = model.layers[0]
+        index_to_split = 0
+        # the code here might be simpler stoping at the denseTranspose type, but its more robust
+        for i in range(len(model.layers)):
+            if model.layers[i].output.shape[-1] <= layer_to_split.output.shape[-1]:
+                layer_to_split = model.layers[i]
+                index_to_split = i
+        index_to_split += 1
+
+        inputs_encoder = model.inputs
+        x = inputs_encoder
+        for new_layer_encoder in model.layers[1:index_to_split]:
+            x = new_layer_encoder(x)
+        encoder_ = tf.keras.Model(inputs_encoder, x)
+
+        latent_shape = encoder_.layers[-1].output.shape[-1]
+        inputs_decoder = Input(shape=latent_shape)
+        y = inputs_decoder
+        for new_layer_decoder in model.layers[index_to_split:]:
+            y = new_layer_decoder(y)
+        decoder_ = tf.keras.Model(inputs_decoder, y)
+        if show_summary:
+            print("---------------------------- ENCODER ----------------------------")
+            encoder_.summary()
+            print("\n---------------------------- DECODER ------------------------")
+            decoder_.summary()
+        return encoder_, decoder_
+"""
+
 
 
 

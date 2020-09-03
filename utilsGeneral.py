@@ -12,6 +12,7 @@ import shutil
 from KnapSack import KnapSack
 import os
 import pickle
+import re
 
 
 class UtilsGeneral:
@@ -35,25 +36,109 @@ class UtilsGeneral:
         with open( name + '.pkl', 'rb') as f:
             return pickle.load(f)
 
-    def restore_model_from_numpy(self, directory, debug_variation=False):
+    def get_numpy_values_from_dictionary(self, directory, encoder_template, weights_template, decoder_template, decoder_weights_template = None, decoder_reverse_order = True, show = True):
         """
-        Recreate model from the numpy files. 
-        Numpy files in the directory are ordered by layers
-        and bias numpy matrix comes before numpy weight matrix. 
+        Return dictionaries of - layer_number -> numpy value
+        It returns dictionaries of: 
+            encoder bias, 
+            encoder weights, 
+            decoder bias, 
+            decoder weights
+        
+        !!! Be careful with regular expressions: good template is for instance: 
+            get_numpy_values_from_dictionary()
+                directory = "100_10_25_7\Model_CheckPoints",
+                encoder_template = 'Train_BiasEncoder_L(.+)_EvoStep_3', 
+                weights_template = 'Train_Weights_L(.+)_TrainLevel_3',
+                decoder_template = 'Train_BiasDecoder_L(.+)_EvoStep_3',
+                show = True
+            )
 
-        In example: 
-            directory-
-                - L1B.npy //numpy bias matrix for layer 1
-                - L1W.npy //numpy weights matrix for layer 1
-                - L2B.npy //numpy bias matrix for layer 2
-                - L2W.npy //numpy weights matrix for layer 2
+        that includes the following files: 
+            Encoder bias[1]:  (1, 200): Train_BiasEncoder_L1_EvoStep_3
+            Encoder bias[2]:  (1, 150): Train_BiasEncoder_L2_EvoStep_3
+            Encoder bias[3]:  (1, 112): Train_BiasEncoder_L3_EvoStep_3
+            Encoder weights[1]:  (100, 200): Train_Weights_L1_EvoStep_3
+            Encoder weights[2]:  (200, 150): Train_Weights_L2_EvoStep_3
+            Encoder weights[3]:  (150, 112): Train_Weights_L3_EvoStep_3
+            Decoder atributes have been reversed
+            Decoder bias[1]:  (1, 150): 'Train_BiasDecoder_L3_EvoStep_3'
+            Decoder bias[2]:  (1, 200): 'Train_BiasDecoder_L2_EvoStep_3'
+            Decoder bias[3]:  (1, 100): 'Train_BiasDecoder_L1_EvoStep_3'
+            Decoder weights are transposed of reversed encoder weights
+            Decoder weights[1]:  (112, 150): transpose of - Train_Weights_L3_EvoStep_3
+            Decoder weights[2]:  (150, 200): transpose of - Train_Weights_L2_EvoStep_3
+            Decoder weights[3]:  (200, 100): transpose of - Train_Weights_L1_EvoStep_3
 
-        Parameters: 
-            directory - path to the directory with numpy files
-        Return: 
-            tf's model recreated from numpy files
+        Example:
+            
         """
 
+        def reverse_dictionary(dic, function=lambda x : x ):
+            reverse_dic = {}
+            i = max(dic.keys())
+            index = 1
+            while i>0: 
+                reverse_dic[index] = function(dic[i])
+                i-=1
+                index +=1
+            return reverse_dic
+        
+
+        pathlist = Path(directory).rglob("*.npy") # list of numpy files
+        encoder_bias = {} # initialize dictionary 
+        decoder_bias = {} # initialize dictionary 
+        encoder_weights = {} # initialize dictionary 
+        decoder_weights = {} # initialize dictionary 
+
+        for file in pathlist: # iterate over file in the directory
+            if(re.match(encoder_template, file.stem)):
+                index = int(re.findall(encoder_template, file.stem)[0])
+                encoder_bias[index] = np.load(file)
+            
+            if(re.match(decoder_template, file.stem)):
+                index = int(re.findall(decoder_template, file.stem)[0])
+                decoder_bias[index] = np.load(file)
+
+            if(re.match(weights_template, file.stem)):
+                index = int(re.findall(weights_template, file.stem)[0])
+                encoder_weights[index] = np.load(file)
+            
+            if(decoder_weights_template != None and re.match(decoder_weights_template, file.stem)):
+                index = int(re.findall(decoder_weights_template, file.stem)[0])
+                weights_decoder[index] = np.load(file)
+            
+        if(decoder_reverse_order):
+            decoder_bias = reverse_dictionary(decoder_bias)
+            if(decoder_weights_template==None):
+                decoder_weights = reverse_dictionary(encoder_weights, np.transpose)
+            else:
+                decoder_weights = reverse_dictionary(encoder_weights)
+
+            
+        if(show):
+            for k,v in encoder_bias.items():
+                print("Encoder bias[{}]: ".format(k), np.shape(encoder_bias[k]))
+            
+            for k,v in encoder_weights.items():
+                print("Encoder weights[{}]: ".format(k), np.shape(encoder_weights[k]))
+            
+            if(decoder_reverse_order):
+                print("Decoder atributes have been reversed")
+
+            for k,v in decoder_bias.items():
+                print("Decoder bias[{}]: ".format(k), np.shape(decoder_bias[k]))
+
+            if(decoder_weights_template == None):
+                print("Decoder weights are transposed of encoder weights")
+
+            for k,v in decoder_weights.items():
+                print("Decoder weights[{}]: ".format(k), np.shape(decoder_weights[k]))
+
+        return  encoder_bias, encoder_weights, decoder_bias, decoder_weights
+
+    def restore_model_from_numpy_dictionaries(self, encoder_bias, encoder_weights, decoder_bias, decoder_weights, show=False):
+        
         class NumpyInitializer(tf.keras.initializers.Initializer):
             # custom class converting numpy arrays to tf's initializers 
             # used to initialize both kernel and bias
@@ -64,42 +149,16 @@ class UtilsGeneral:
             def __call__(self, shape, dtype=None):
                 # return tensor 
                 return self.array 
-
-        def file_iterating(directory):
-            """
-            Iterate over directory and create 
-            dictionary of layers number and it's structure
-
-            layers[layer_number] = [numpy_bias_matrix, numpy_weight_matrix]
-            """
-
-            pathlist = Path(directory).rglob("*.npy") # list of numpy files
-            layers = {} # initialize dictionary 
-            index = 0
-            for file in pathlist: # iterate over file in the directory 
-                if index % 2 ==0:
-                    layers[int(index/2)] = [] # next layer - now key in dictionary
-                layers[int(index/2)].append(np.load(file)) # add to dictionary bias or weight 
-                index +=1
-                if debug_variation:
-                    print(file, ", shape: ", np.shape(np.load(file))) # optional to show list of files we deal with 
-            return layers # return dictionary 
-
-
-        layers = file_iterating(directory) # get dictionary with model structure
-        layers_numbers = len(layers) #optional: calculate model depth
-
-        inputs = Input(shape = (np.shape(layers[0][1])[0])) # create first model input layer
+                
+        # CREATE ENCODING PART
+        sample_size = np.shape(encoder_weights[1])[0]
+        inputs = Input(shape = (sample_size,)) # create first model input layer
         x = inputs 
 
-        for key, value in layers.items(): # iterate over all levers in the layers dictionary
-
-            if key< int(layers_numbers/2):# optional: I was adding dropout layers to the first half of the model 
-                x = Dropout(0.)(x) # optional: adding droput layer
-
-            bias_initializer = NumpyInitializer(layers[key][0][0]) # create bias initializer for key's layer 
-            kernal_initializer = NumpyInitializer(layers[key][1]) # create weights initializer for key's layer 
-            layer_size = np.shape(layers[key][0])[-1] # get the size of the layer
+        for layer_number  in range(1,max(encoder_weights.keys())+1):
+            bias_initializer = NumpyInitializer(encoder_bias[layer_number][0]) # create bias initializer for key's layer 
+            kernal_initializer = NumpyInitializer(encoder_weights[layer_number]) # create weights initializer for key's layer 
+            layer_size = len(encoder_bias[layer_number][0]) # get the size of the laye
 
             new_layer = tf.keras.layers.Dense( # initialize new Dense layer
                 units = layer_size, 
@@ -108,11 +167,40 @@ class UtilsGeneral:
                 activation="tanh")
             new_layer.trainable = False # optional: I was dealing with pretrained model so I disabled trainable
             x = new_layer(x) # stack layer at the top of the previous layer
-            
+
+        #STACK ABOVE DECODING PART 
+
+        for layer_number  in range(1,max(decoder_weights.keys())+1):
+            bias_initializer = NumpyInitializer(decoder_bias[layer_number][0]) # create bias initializer for key's layer 
+            kernal_initializer = NumpyInitializer(decoder_weights[layer_number]) # create weights initializer for key's layer 
+            layer_size = len(decoder_bias[layer_number][0]) # get the size of the laye
+
+            new_layer = tf.keras.layers.Dense( # initialize new Dense layer
+                units = layer_size, 
+                kernel_initializer=kernal_initializer, 
+                bias_initializer = bias_initializer,
+                activation="tanh")
+            new_layer.trainable = False # optional: I was dealing with pretrained model so I disabled trainable
+            x = new_layer(x) # stack layer at the top of the previous layer
+
+
         model = tf.keras.Model(inputs, x) # create tf's model based on the stacked layers 
         model.compile() # compile model 
+        if(show):
+            model.summary()
+        return model
 
-        return model # return compiled model 
+    def restore_model_from_directory(self, directory, encoder_template, weights_template, decoder_template, decoder_weights_template = None, decoder_reverse_order = True, show = False):
+        encoder_bias, encoder_weights, decoder_bias, decoder_weights = self.get_numpy_values_from_dictionary(
+            directory = directory,
+            encoder_template = encoder_template, 
+            weights_template = weights_template,
+            decoder_template = decoder_template, 
+            decoder_weights_template = decoder_weights_template, 
+            decoder_reverse_order=decoder_reverse_order, 
+            show = show)
+        return  self.restore_model_from_numpy_dictionaries(encoder_bias, encoder_weights, decoder_bias, decoder_weights, show)
+
 
     def save(self, *args):
         """

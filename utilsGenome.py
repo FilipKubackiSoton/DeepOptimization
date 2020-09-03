@@ -26,7 +26,7 @@ import random
 import pickle
 
 
-class Genome:
+class UtilsGenome:
     def __init__(self, utg, utm, training_set, model):
         """
         It's example how to check genome for swap action class: 
@@ -79,7 +79,7 @@ class Genome:
         pos = []
         fit = []    
         encode = self.utm.code(sample,e)
-        decode_ref, decode_fit_ref = self.utm.decod(encode, d, len(encode), len(sample))
+        decode_ref, decode_fit_ref = self.utm.decod(encode, d)
         latent_size = len(encode)
         sample_size = len(sample)
         dic_fit = {}
@@ -87,7 +87,7 @@ class Genome:
         for i in range(latent_size):
             encode_tmp = copy.copy(encode)
             encode_tmp[i] *=-1
-            decode_tmp, decode_fit_tmp = self.utm.decod(encode_tmp, d, latent_size, sample_size)
+            decode_tmp, decode_fit_tmp = self.utm.decod(encode_tmp, d)
             dic_fit[i] = decode_fit_tmp - decode_fit_ref
             dic_pos[i] = changed_index_pos(decode_tmp - decode_ref)
         return dic_pos, dic_fit
@@ -170,8 +170,8 @@ class Genome:
             dictionary actions belonging to group {hidden_change : visible change}, 
         """
         e,d = self.utm.split_model_into_encoder_decoder(model)
-        visible_size = e.layers[0].input_shape[-1][-1]
-        hidden_size = d.layers[0].input_shape[-1][-1]
+        visible_size = e.layers[0].input_shape[-1]
+        hidden_size = d.layers[0].input_shape[-1]
 
         p, f = self.sample_change(e,d, sample)
 
@@ -198,7 +198,7 @@ class Genome:
             plt.show()
         return p, f,swap ,single_add, group
 
-    def get_map_of_actions_based_on_samples(self, sample_set, size_set=500):
+    def get_map_of_actions_based_on_samples(self, model = None, sample_set=None, size_set=500):
         """
         Get map of: sample index --> action in action's class (swap, single_add, group)
         Parameters: 
@@ -209,13 +209,17 @@ class Genome:
             single_add {sample index : {hiden bit change : visible bit change}}
             group {sample index : {hiden bit change : visible bit change}}
         """
+        if sample_set == None:
+            sample_set = self.training_set
+        if model == None: 
+            model = self.model
         swap = {}
         single_add = {}
         group = {}
         words = {}
         res = []
         for i in range(size_set):
-            tmp = self.get_actions_in_encoded_space(m, sample_set[i], False)
+            tmp = self.get_actions_in_encoded_space(model, sample_set[i], False)
             swap[i] = tmp[2]
             single_add[i] = tmp[3]
             group[i] = tmp[4]
@@ -494,23 +498,41 @@ class Genome:
                     result_acc[hid_change][vis_change] = self.check_genom(genom, hid_change, vis_change,action, self.dehash, self.check_hash_function, len_coef=len_coef, number_of_samples=number_of_samples)
                 
         return result_acc, result_len, result_genom
-    
-    
 
+
+"""
+knapSack = KnapSack("100_5_25_1")
+utg = UtilsGeneral(knapSack)
+utm = UtilsModel(utg)
+utp = UtilsPlot(utilsGeneral = utg, utilsModel = utm)
+ute = UtilsEncoded(utilsGeneral = utg, utilsModel = utm)
+fitness_function = knapSack.Fitness
+
+tmptrain1, tmptrain = utg.load_datasets(1, 2)
+
+model = utg.restore_model_from_directory("100_10_25_7\Model_CheckPoints",encoder_template = 'Train_BiasEncoder_L(.+)_EvoStep_6', weights_template = 'Train_Weights_L(.+)_TrainLevel_6' ,decoder_template = 'Train_BiasDecoder_L(.+)_EvoStep_6' ,show = True)
+
+utgen = UtilsGenome(utg, utm, tmptrain, model)
+swap = utgen.get_map_of_actions_based_on_samples(model, None, 100)
+""" 
+"""
 
 knapSack = KnapSack("100_5_25_1")
 utg = UtilsGeneral(knapSack)
 utm = UtilsModel(utg)
 utp = UtilsPlot(utilsGeneral = utg, utilsModel = utm)
 ute = UtilsEncoded(utilsGeneral = utg, utilsModel = utm)
-m = utg.restore_model_from_numpy("100_5_25_1Knapsack_Layer1\\100_5_25_1Knapsack")
+m = utg.restore_model_from_directory(
+    "100_10_25_7\Model_CheckPoints",
+    encoder_template = 'Train_BiasEncoder_L(.+)_EvoStep_6', 
+    weights_template = 'Train_Weights_L(.+)_TrainLevel_6',
+    decoder_template = 'Train_BiasDecoder_L(.+)_EvoStep_6',
+    show = True)
 
 tmptrain1, tmptrain = utg.load_datasets(1, 2)
 
-
+genomeUtils = UtilsGenome(utg, utm, tmptrain, m)
 swap = utg.load_obj("swap")
-
-genomeUtils = Genome(utg, utm, tmptrain, m)
 
 resswap = genomeUtils.get_map_hidden_visible_samples(swap)
 
@@ -519,3 +541,5 @@ a,l,g = genomeUtils.get_genom_performence_distribution(resswap, 0, std_coef=2, s
 utg.save_obj(a, "accswap")
 utg.save_obj(a, "lenswap")
 utg.save_obj(a, "genswap")
+
+"""
