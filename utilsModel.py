@@ -70,7 +70,7 @@ class UtilsModel:
         new_fitness = self.fitness_function(output_array_binary) # calculate new fitness
         return output_array_binary, new_fitness  
 
-    def split_model_into_encoder_decoder(self, model, show = False):
+    def split_model_into_encoder_decoder(self, model, index_to_split = None, show = False):
         """
         Extract encoder and decoder from the model.
         The model is splited around the bottle neck. 
@@ -86,11 +86,11 @@ class UtilsModel:
             model_.compile()
             return model_
 
-        index_to_split = np.argmin([x.output.shape[-1] for x in model.layers])+1
+        if index_to_split == None:
+            index_to_split = np.argmin([x.output.shape[-1] for x in model.layers])+1
 
         encoder = create_model_from_list_of_layers(*model.layers[:index_to_split])
-
-        decoder_layers = [tf.keras.layers.InputLayer(input_shape = (np.shape(model.layers[index_to_split-1].get_weights()[1])[0],))]
+        decoder_layers = [tf.keras.layers.InputLayer(input_shape = (len(model.layers[index_to_split-1].get_weights()[1]),))]
         decoder_layers += model.layers[index_to_split:]
         decoder = create_model_from_list_of_layers(*decoder_layers)
         

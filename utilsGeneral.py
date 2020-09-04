@@ -106,7 +106,7 @@ class UtilsGeneral:
             
             if(decoder_weights_template != None and re.match(decoder_weights_template, file.stem)):
                 index = int(re.findall(decoder_weights_template, file.stem)[0])
-                weights_decoder[index] = np.load(file)
+                decoder_weights[index] = np.load(file)
             
         if(decoder_reverse_order):
             decoder_bias = reverse_dictionary(decoder_bias)

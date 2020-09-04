@@ -27,7 +27,7 @@ import pickle
 
 
 class UtilsGenome:
-    def __init__(self, utg, utm, training_set, model):
+    def __init__(self, utg, utm, training_set = None, model= None):
         """
         It's example how to check genome for swap action class: 
 
@@ -153,9 +153,8 @@ class UtilsGenome:
             res.append(tmp)
 
         return np.asarray(res)
-
-
-    def get_actions_in_encoded_space(self, model, sample, show= False):
+    
+    def get_actions_in_encoded_space(self, sample, model = None, show= False, index_to_split = None, title = "-"):
         """
         Extract actions from hidden to visible space (what hidden bit change makes vissible bits change). 
         Paramters: 
@@ -169,15 +168,23 @@ class UtilsGenome:
             dictionary actions belonging to single add {hidden_change : visible change}, 
             dictionary actions belonging to group {hidden_change : visible change}, 
         """
-        e,d = self.utm.split_model_into_encoder_decoder(model)
-        visible_size = e.layers[0].input_shape[-1]
-        hidden_size = d.layers[0].input_shape[-1]
+        if model == None: 
+            model = self.model
+
+        e,d = self.utm.split_model_into_encoder_decoder(
+            model = model, 
+            index_to_split = index_to_split
+            )
+        
+        visible_size = e.layers[0].input_shape[-1]#[-1]
+        hidden_size = d.layers[0].input_shape[-1]#[-1]
 
         p, f = self.sample_change(e,d, sample)
 
         swap,single_add, group = self.classify_actions(p)
         if show:
-            fig, axes = plt.subplots(nrows=1, ncols=3, constrained_layout = True, figsize=(15,15))
+            
+            fig, axes = plt.subplots(nrows=1, ncols=3, constrained_layout = False, figsize=(15,15))  
             pc = axes[0].imshow(self.get_matrix_representation(swap, visible_size, hidden_size),interpolation='nearest',cmap=cm.Greys_r)
             axes[0].set_title("Swap")
             axes[0].set_xlabel("Visible change")
@@ -194,11 +201,12 @@ class UtilsGenome:
             axes[2].set_ylabel("Hidden change")
             divider = make_axes_locatable(plt.gca())
             cax = divider.append_axes("right", size="5%", pad=0.1)
-            plt.colorbar(pc, cax=cax, ticks = [1,0,-1], label = "addition      ---      substraction")  
+            plt.colorbar(pc, cax=cax, ticks = [1,0,-1], label = "addition      - {} -      substraction".format(title))  
             plt.show()
         return p, f,swap ,single_add, group
 
-    def get_map_of_actions_based_on_samples(self, model = None, sample_set=None, size_set=500):
+
+    def get_map_of_actions_based_on_samples(self, model = None, sample_set=None, size_set=500, index_to_split = None):
         """
         Get map of: sample index --> action in action's class (swap, single_add, group)
         Parameters: 
@@ -209,7 +217,7 @@ class UtilsGenome:
             single_add {sample index : {hiden bit change : visible bit change}}
             group {sample index : {hiden bit change : visible bit change}}
         """
-        if sample_set == None:
+        if sample_set.all() == None:
             sample_set = self.training_set
         if model == None: 
             model = self.model
@@ -219,7 +227,11 @@ class UtilsGenome:
         words = {}
         res = []
         for i in range(size_set):
-            tmp = self.get_actions_in_encoded_space(model, sample_set[i], False)
+            tmp = self.get_actions_in_encoded_space(
+                sample = sample_set[i],
+                model =model,
+                index_to_split= index_to_split, 
+                show = False)
             swap[i] = tmp[2]
             single_add[i] = tmp[3]
             group[i] = tmp[4]
@@ -341,7 +353,7 @@ class UtilsGenome:
 
 
 
-    def check_genom(self, genom, hidden, visible, action, dehash, check_hash_f,len_coef=5, number_of_samples=100, show = False, model = None):
+    def check_genom(self, genom, hidden, visible, action, dehash = None, check_hash_f = None,len_coef=5, number_of_samples=100, show = False, model = None, index_to_split = None):
         """
         Check genome performence. 
         Paramaeters: 
@@ -361,6 +373,10 @@ class UtilsGenome:
             m = self.model
         else: 
             m = model
+        if dehash == None:
+            dehash = self.dehash
+        if check_hash_f == None: 
+            check_hash_f = self.check_hash_function
 
         counter = 0
         num = 0 
@@ -368,7 +384,11 @@ class UtilsGenome:
         while num < number_of_samples:
             arr = self.get_sol_based_on_genom(genom, len_coef, False)
             num +=1
-            dic = self.get_actions_in_encoded_space(m, arr, False)[2+action]
+            dic = self.get_actions_in_encoded_space(
+                sample = arr, 
+                model = m, 
+                show = False,
+                index_to_split = index_to_split)[2+action]
             if dic.__contains__(hidden) and (dic[hidden]==dehash(visible) or dic[hidden] == dehash(self.check_hash_function(dehash(visible)))):
                 counter+=1
             if show and num % const==0:
@@ -495,7 +515,7 @@ class UtilsGenome:
                     genom = self.get_genome_from_distribution(n, std_coef)
                     result_len[hid_change][vis_change]= len(sample)
                     result_genom[hid_change][vis_change] = genom
-                    result_acc[hid_change][vis_change] = self.check_genom(genom, hid_change, vis_change,action, self.dehash, self.check_hash_function, len_coef=len_coef, number_of_samples=number_of_samples)
+                    result_acc[hid_change][vis_change] = self.check_genom(genom, hid_change, vis_change, action, self.dehash, self.check_hash_function, len_coef=len_coef, number_of_samples=number_of_samples)
                 
         return result_acc, result_len, result_genom
 
