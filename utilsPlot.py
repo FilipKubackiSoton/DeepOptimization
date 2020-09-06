@@ -138,24 +138,26 @@ class UtilsPlot:
             print("[INFO]: Fitness development phase plot was saved in the directory: ", path)
 
 
-    def plot_evolution_model(self, model, array, plot_name = None, search = None, learning_steps = 50, debuge_variation=False):
+    def plot_evolution_model(self, model, sample_set, plot_name = None, search = None, learning_steps = 50, learning_steps=False, show = True):
         """
-        Generate and save evolution plot of the model. 
+        Run model evolution based on the randomly choosen solution from sample_set.
+        Plot shows how solution is changed over many evaluations.  
 
         Parameters: 
-            model - model to test 
-            array - set of sample from which one will be choosen and evaluated
-            plot_name - name of the saving plot 
-        
-        Optional parameters: 
-            learning_steps - number of steps of sample evaluation 
+            model - model based on which latent space search sample is modified
+            sample_set - set of samples from whcih one will be choosen randomly
+            search (None) - searching function in encoded representation (None - 2 random bits flip)
+            plot_name (None) - save plot under the given name in the directory saved plots (if None - not save)
+            learning_steps (50) - number of sample evaluations
+            show (True) - show generated plot
+            learning_steps (False) - turns on debuge mode 
         """
         if search == None:
             search = self.search # modify encoded representation using default search function
         encoder, decoder = self.utm.split_model_into_encoder_decoder(model)
-        N = np.shape(array)[0] # size of the array 
+        N = np.shape(sample_set)[0] # size of the array 
         index = np.random.randint(N) #choose random index to flip 
-        candidate_solution = array[index]# pick up random sample 
+        candidate_solution = sample_set[index]# pick up random sample 
         sol_evol = [] # list to store steps of evolution 
         sol_evol.append(candidate_solution)
         current_fittnes = self.fitness_function(candidate_solution)
@@ -180,48 +182,56 @@ class UtilsPlot:
         plt.xlabel("Solution variable")
         plt.ylabel("Development Step")
         plt.colorbar()
+        if show: 
+            plt.show()
+        
         if plot_name != None:
             path = self.utg.create_plot_path(plot_name)
             plt.savefig(path)
             print("[INFO]: Evolution model plot was saved in the directory: ", path)
 
-    def plot_latent_acitvation(self, model, plot_name, validation_set_size = 50):
+    def plot_latent_acitvation(self, model, sample_set, plot_name = None, validation_set_size = 20):
         """
-        Plot latent activation 
+        Plot latent activation based on many samples: 
+
 
         Parameters: 
-            model - model on which we are working 
-            plot_name - name of the saving file 
+            model - model which latent distribution will be displayed 
+            sample_set - set of sample to evaluate 
+            plot_name (None) - save plot under the given name in the directory saved plots (if None - not save)
+            validation_set_size (20) - number of samples used to create plot
         """
-        # generate the val set 
-        print("[INFO] generating validating dataset...")
-        valY = self.utg.generate_training_sat(self.utg.knapSack.Size, validation_set_size)
-
-        features_list = [layer.output for layer in model.layers[:4]]
-        new_model = tf.keras.Model(inputs = model.input, outputs = features_list)
-        predict = new_model.predict(valY)
-        N = np.arange(0, len(predict[3][0]))
-
-        plt.figure()
-        for i in range(20):
-            index = np.random.randint(len(predict[3][0]))
-            plt.plot(N, predict[3][index], 'o',color = 'black')
-        plt.title("L1 activation")
+        e = self.utm.split_model_into_encoder_decoder(model)[0]
+        predict = e.predict(sample_set[:validation_set_size])
+        N = np.shape(predict)[1]
+        for i in range(validation_set_size):
+            plt.plot(np.arange(N), predict[np.random.randint(validation_set_size)], 'o',color = 'black')
+        plt.title("Latent Activation")
         plt.xlabel("Node #")
         plt.ylabel("Activation value")
-        path = self.utg.create_plot_path(plot_name)
-        plt.savefig(path)
-        print("[INFO]: Latent activation plot was saved in the directory: ", path)
+        plt.show()
+
+        if not plot_name == None:
+            path = self.utg.create_plot_path(plot_name)
+            plt.savefig(path)
+            print("[INFO]: Latent activation plot was saved in the directory: ", path)
 
     def plot_trajectory_evolution(self, sample_size, plot_name = None, search = None, sample_number=10, learning_steps=50, model=None, debuge_variation=False):
         """
         Generate and save trajectory plot of the model. 
 
-        Parameters: 
-            model - model on which base the evolution will be calculated 
-            array - set of sample from which  will be choosen and evaluated
-            plot_name - name of the saving plot 
-            model - model based on which samples will be changed 
+        Parameters:
+            szmple_size - size of the sample (lenght of the knapsack solution) 
+        Optioinal Parameters:
+            plot_name (None) - save plot under the given name in the directory saved plots (if None - not save)
+            search (None) - searching function in encoded representation (None - 2 random bits flip)
+            sample_numbers (10) - numbers of samples to visualize on plot
+            learning_steps (50) - number of evolution steps
+            model (None) - model based on which samples are evaluated (if None - optimize non compressed samples)
+            debug_variation (False) - turn on debuge mode
+        Returns: 
+            maximal_possible fitness (int), 
+            list of improved solutions
         """
         global_history = []
         final_solutions = []
