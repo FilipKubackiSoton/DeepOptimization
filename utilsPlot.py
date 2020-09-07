@@ -6,6 +6,8 @@ import copy
 import matplotlib.cm as cm
 from KnapSack import KnapSack
 from shallowNet.shallowNet import DenseTranspose
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib import transforms
 
 
 class UtilsPlot:
@@ -16,78 +18,81 @@ class UtilsPlot:
         self.fitness_function = self.utg.fitness_function
         self.search = self.utg.flip
 
-    def plot_weights_model(self, model, plot_name="weight_plot_default_name.png", number_of_deep_layers_to_show = None):
+    
+    def plot_weights_model(self, model,*args, plot_name=None,  show = True, decoder = False):
         """
-        Visualize weights of model. 
+        Visualize weights of model (based on the encoder). 
         If added hidden layers is more than 1, then the function shows
         number of hidden layers, starting from the deepest one,
         defined by the param: number_of_deep_layers_to_show
 
-        Params:
-            model - model to show 
-            path (default: weight_plot_default_name.png)- path where the plot with weights shall be ploted 
-        Optional params: 
-            number_of_deepl_layers_to_show (defult: None - all layers)- number of deep layers to print
+        Parameters:
+            model - model which weights will be visualized 
+            *args (()) - number of layers to visualize (if nothing is passed show all dense layers from encoder)
+            plot_name (None) - save plot under the given name in the directory saved plots (if None - not save)
+            show (True) - show generated plot
+            decoder (False) - visualize weights from decoder 
 
         Possible Erros:
             number_of_deepl_layers_to_show cannot be greater than the actual 
             number of added layers
         """
-        number_of_convoluted_layers = 0
-        transpose_layer_type = str(type(DenseTranspose(None))).split(".")[-1]
-        layers_to_show = []
-        for l in model.layers:
-            if str(type(l)).split(".")[-1] == transpose_layer_type: # compare types of convoluted layers
-                number_of_convoluted_layers += 1
-                layers_to_show.append(l)
+        e,d = self.utm.split_model_into_encoder_decoder(model, show = False)
+        if decoder: 
+            e = d
+        encoder = []
+        for layer in e.layers:
+            if type(layer) ==type(tf.keras.layers.Dense(1)):
+                encoder.append(layer)
 
-        if number_of_deep_layers_to_show == None: # if param is None then show all convoluted layers 
-            number_of_deep_layers_to_show = number_of_convoluted_layers
+        if len(encoder)==1:
+            plt.figure(figsize=(10,10))
+            plt.imshow(encoder[0].get_weights()[0], interpolation='nearest', cmap=cm.Greys_r)
+            plt.xlabel("hidden")
+            plt.ylabel("visible")
+            plt.title("layer 0")
+            plt.colorbar()
             
-        # check if number of layers to show is fine
-        assert number_of_convoluted_layers + 1 > number_of_deep_layers_to_show, "number of layers to visualize cannot exceded the real number of convoluted layers"  
+        else:
+            if args == ():
+                args = list(np.arange(len(encoder)))
 
-        print("[INFO]: number of convoluted layers is equal to: ", number_of_convoluted_layers)
-        index = 0
-
-        if number_of_deep_layers_to_show == 1: # show encoder and decoder weights 
-            fig, axes = plt.subplots(nrows=1, ncols=2, constrained_layout = True)
-            fig.suptitle('Encoder/Decoder Weights', fontsize=16)
-            im =axes[0].imshow(layers_to_show[0].get_weights()[1], interpolation='nearest', cmap=cm.Greys_r)
-            axes[0].set_title("Encoder")
-            axes[0].set_ylabel("Visible")
-            axes[0].set_xlabel("Hidden")
-            im =axes[1].imshow(layers_to_show[0].get_weights()[1], interpolation='nearest', cmap=cm.Greys_r)
-            axes[1].set_title("Decoder")
-            axes[1].set_ylabel("Visible")
-            axes[1].set_xlabel("Hidden")
-        else: # show hidden deep layers weights 
-            fig, axes = plt.subplots(nrows=1, ncols=number_of_deep_layers_to_show, constrained_layout = True)
-            fig.suptitle('Weights Matrix Image Reconstruction', fontsize=16)
-            for ax in axes.flat:
-                
-                im = ax.imshow(layers_to_show[index].get_weights()[1], interpolation='nearest', cmap=cm.Greys_r)
-                ax.set_title("Conv Layer : " + str(index))
+            fig, axes = plt.subplots(nrows=1, ncols=len(args), constrained_layout = True, figsize=(15,15))
+            index = 0
+            
+            for i in args:
+                ax = axes[index]
+                im = ax.imshow(encoder[i].get_weights()[0], interpolation='nearest', cmap=cm.Greys_r)
+                ax.set_title("Layer : " + str(i))
                 ax.set_xlabel("Hidden")
                 ax.set_ylabel("Vissible")
                 index+=1
-        fig.colorbar(im, ax=axes.ravel().tolist())
-        path = self.utg.create_plot_path(plot_name)
-        plt.savefig(path)
-        print("[INFO]: Weights of model were saved in the directory: ", path)
+                divider = make_axes_locatable(ax)
+                cax = divider.append_axes('bottom', size='5%', pad=0.45)
+                fig.colorbar(im, cax = cax, orientation='horizontal')
+        
+        if plot_name != None:
+            path = self.utg.create_plot_path(plot_name)
+            plt.savefig(path)
+            print("[INFO]: Trajectory evoultion plot was saved in the directory: ", path)
+        if show:
+            plt.show()
 
 
-    def plot_model_loss(self, model_fit, plot_name, epochs):
+    def plot_model_loss(self, model_fit, plot_name = None, show = True):
         """
-        Plot model loss to epochs
+        Plot model loss history based on the tensor flow training history
 
         Parameters: 
-            model_fit - result of the model training 
-            plot_name - name of the saving file 
+            model_fit - history of model training
+            plot_name (None) - save plot under the given name in the directory saved plots (if None - not save)
+            show (True) - show generated plot
+
         """
         # construct a plot that plots and saves the training history
         plt.style.use("ggplot")
         plt.figure()
+        epochs = len(model_fit.history[list(model_fit.history.keys())[0]])
         for metrics in list(model_fit.history.keys())[1:]:
             plt.plot(np.arange(0, epochs), model_fit.history[metrics], label=metrics)
         
@@ -95,23 +100,28 @@ class UtilsPlot:
         plt.xlabel("Epoch #")
         plt.ylabel("Loss/Accuracy")
         plt.legend()
-        path = self.utg.create_plot_path(plot_name)
-        plt.savefig(path)
-        print("[INFO]: Loss plot was saved in the directory: ", path)
-        return plt
+        if show:
+            plt.show()
+        if not plot_name == None:
+            path = self.utg.create_plot_path(plot_name)
+            plt.savefig(path)
+            print("[INFO]: Loss plot was saved in the directory: ", path)
+        return
 
     
 
 
-    def plot_fitness_development_phase(self, model, array, search = None, plot_name = None):
+    def plot_fitness_development_phase(self, model, array, search = None, plot_name = None, show = True):
         """
         Plot fitnes development phase. 
 
         Parameters: 
             model - tf's model based on which we will evaluate 
-            array - set of samples from which a one will be choosen 
-            and will be passed to the transfer_sample_latent_flip 
-            to see how does the model develop 
+            array - set of samples from which a one will be choosen and will be passed to the transfer_sample_latent_flip 
+                    to see how does the model develop 
+            search (None) - searching function in encoded representation (None - 2 random bits flip)
+            plot_name (None) - save plot under the given name in the directory saved plots (if None - not save)
+            show (True) - show generated plot
         """
         index = np.random.randint(self.utg.knapSack.Size)  
         encoder, decoder = self.utm.split_model_into_encoder_decoder(model)
@@ -132,13 +142,15 @@ class UtilsPlot:
         plt.xlabel("Evolution Step")
         plt.ylabel("Fitness")
         plt.legend(loc="lower left")
+        if show:
+            plt.show()
         if plot_name != None:
             path = self.utg.create_plot_path(plot_name)
             plt.savefig(path)
             print("[INFO]: Fitness development phase plot was saved in the directory: ", path)
 
 
-    def plot_evolution_model(self, model, sample_set, plot_name = None, search = None, learning_steps = 50, learning_steps=False, show = True):
+    def plot_evolution_model(self, model, sample_set, plot_name = None, search = None, learning_steps = 50,  debuge_variation = False, show = True,):
         """
         Run model evolution based on the randomly choosen solution from sample_set.
         Plot shows how solution is changed over many evaluations.  
@@ -151,6 +163,7 @@ class UtilsPlot:
             learning_steps (50) - number of sample evaluations
             show (True) - show generated plot
             learning_steps (False) - turns on debuge mode 
+            debuge_variation (False) - turn on debuge mode
         """
         if search == None:
             search = self.search # modify encoded representation using default search function
@@ -190,10 +203,9 @@ class UtilsPlot:
             plt.savefig(path)
             print("[INFO]: Evolution model plot was saved in the directory: ", path)
 
-    def plot_latent_acitvation(self, model, sample_set, plot_name = None, validation_set_size = 20):
+    def plot_latent_acitvation(self, model, sample_set, plot_name = None, validation_set_size = 20, show = True):
         """
         Plot latent activation based on many samples: 
-
 
         Parameters: 
             model - model which latent distribution will be displayed 
@@ -209,20 +221,21 @@ class UtilsPlot:
         plt.title("Latent Activation")
         plt.xlabel("Node #")
         plt.ylabel("Activation value")
-        plt.show()
+        
+        if show:
+            plt.show()
 
         if not plot_name == None:
             path = self.utg.create_plot_path(plot_name)
             plt.savefig(path)
             print("[INFO]: Latent activation plot was saved in the directory: ", path)
 
-    def plot_trajectory_evolution(self, sample_size, plot_name = None, search = None, sample_number=10, learning_steps=50, model=None, debuge_variation=False):
+    def plot_trajectory_evolution(self, sample_size, plot_name = None, search = None, sample_number=10, learning_steps=50, model=None, debuge_variation=False, show = True):
         """
         Generate and save trajectory plot of the model. 
 
         Parameters:
             szmple_size - size of the sample (lenght of the knapsack solution) 
-        Optioinal Parameters:
             plot_name (None) - save plot under the given name in the directory saved plots (if None - not save)
             search (None) - searching function in encoded representation (None - 2 random bits flip)
             sample_numbers (10) - numbers of samples to visualize on plot
@@ -288,9 +301,284 @@ class UtilsPlot:
             path = self.utg.create_plot_path(plot_name)
             plt.savefig(path)
             print("[INFO]: Trajectory evoultion plot was saved in the directory: ", path)
-        else:
+        if show:
             plt.show()
         return max_fitness, final_solutions
+
+
+    def plot_correlation_matrix(self, model, activation=1, background_activation =-1, threshold = None, plot_name = None,show = True):
+        """
+        Visualize "correlation" matrix (masure of overlapping of encoded
+        representation comming from separate neuron activarions)
+
+        Correlation matrix -  It compares encoded representation comming from 
+            different single bits activation (sample with i-th bit set to activation's value and 
+            all others set to back_ground's value). "Correlation" is calculated as RMSE with 
+            some threshodl value to alliviate noise influence. 
+
+        Parameters:
+            model - model based on which we get encoded form 
+            activation (1) - value of separate bit activation 
+            background_activation (-1) - value of activation of background neurons in encoded phase
+            threshold (None) - threshold (int) saying above which level we count overlaping if(None - take std as threshold)
+            plot_name (None) - save plot under the given name in the directory saved plots (if None - not save)
+            show (True) - show generated plot
+        """
+        plt.figure()
+        res = self.utm.correlation_matrix(model, activation=activation, background_activation = background_activation, threshold = threshold)
+        plt.imshow(res, interpolation='nearest')
+        if threshold==None:
+            threshold = "std"
+        plt.title("Correlation Matrix:\nlatent space overlapping: RMSE threshold {}".format(threshold))
+        plt.xlabel("Bit position")
+        plt.ylabel("Bit position")
+        plt.colorbar()
+
+        if show:
+            plt.show()
+
+        if plot_name != None:
+            path = self.utg.create_plot_path(plot_name)
+            plt.savefig(path)
+            print("[INFO]: Trajectory evoultion plot was saved in the directory: ", path)
+
+        return plt
+
+    def plot_set_probability_and_values(self, sample_set, sort = False, plot_name = None, show = True):
+        """
+        Visualize bit's probability distribution. Calculate i-th bit probability of activation. 
+        
+        Parameters:
+            sample_set - sample set based on which we calculate distribution 
+            sort (False) - sort distribution according to the probability of activation 
+            plot_name (None) - save plot under the given name in the directory saved plots (if None - not save)
+            show (True) - show generated plot
+
+        """
+        sample_size = np.shape(sample_set)[-1]
+        arr = np.zeros(sample_size)
+        set_size = np.shape(sample_set)[0]
+        glob = {}
+        index = 0
+        for i in sample_set:
+            arr +=np.where(i<0,0,1)
+            
+        arr = arr/set_size
+
+        for i in range(len(arr)):
+            glob[i] = arr[index]
+            index +=1
+        
+        if sort:
+            arr.sort()
+        
+        pos = {k : v for k, v in sorted(glob.items(), key = lambda item : item[1])}
+        
+        arr2 = []
+        for i in pos:
+            tmp = np.zeros(100)
+            tmp[i] = 1
+            arr2.append(np.dot(self.utg.knapSack.P, tmp))
+        
+        fig, axes = plt.subplots(nrows=1, ncols=2, constrained_layout = True)
+        fig.suptitle('Training Set Anomaly', fontsize=16)
+        axes[0].bar(np.arange(sample_size), arr, alpha = 0.5)
+        axes[0].set_title("Input bit\n activation distribution")
+        axes[0].set_ylabel("Probability")
+        axes[0].set_xlabel("Index")
+        axes[1].bar(np.arange(sample_size), arr2, alpha = 0.5) 
+        axes[1].set_title("Single bit contribution:\n sorted by index probability")
+        axes[1].set_ylabel("Contribution")
+        axes[1].set_xlabel("Index")
+        if show:
+            plt.show()
+        if plot_name != None:
+            path = self.utg.create_plot_path(plot_name)
+            plt.savefig(path)
+            print("[INFO]: Trajectory evoultion plot was saved in the directory: ", path)
+
+    def plot_latent_activation_distribution(self, sample_set, model, probability = True, sort = False, model_name = "", plot_name = None, show = True):
+        """
+        Plot distribution of encoded bits' activation being positive or negative. 
+        Add mean and std on the plot. 
+
+        Paramters:
+            sample_set - sample set based on which we calculate distribution 
+            model - tf's model based on which samples from sample_set are encoded 
+            probability (True) - False - show positive and negative porbabilities separetely, True - stack both positive and negative probability
+            sort (False) - sort distribution according to the probability of activation 
+            model_name ("") - name of the model which will be added to the plot title
+            plot_name (None) - save plot under the given name in the directory saved plots (if None - not save)
+            show (True) - show generated plot 
+        Returns: 
+            negative distribution, 
+            positive distribution, 
+            partitioned samples belonging to each subset (result of partition funtion from UtilsGeneral)
+        """
+
+        def AllPositivesToZero(sol):
+            ConvertSol = np.copy(sol)
+            if probability:
+                return  np.where(sol > 0.0, 1, 0)
+            ConvertSol[sol >= 0] = 0
+            return ConvertSol
+        def AllNegativesToZero(sol):
+            ConvertSol = np.copy(sol)
+            if probability:
+                return np.where(sol > 0.0, 0, 1)
+            ConvertSol[sol < 0] = 0
+            return ConvertSol
+        
+        
+        e, d = self.utm.split_model_into_encoder_decoder(model)
+        res_pos = []
+        res_neg = []
+        latent_size = np.shape(e.layers[-1].get_weights()[0])[-1]
+        final_pos = np.zeros(latent_size)
+        final_neg = np.zeros(latent_size)
+        if len(np.shape(sample_set))== 3: 
+            sample_set  = sample_set[0]
+        for i in sample_set:
+            res_pos.append(AllNegativesToZero(self.utm.code(i,e)))
+            res_neg.append(AllPositivesToZero(self.utm.code(i,e)))
+
+        for i in res_pos:
+            final_pos += i
+        for i in res_neg:
+            final_neg += i
+
+        final_pos = final_pos/len(sample_set)
+        if probability:
+            final_neg = final_neg/len(sample_set) 
+        else: 
+            final_neg = final_neg/len(sample_set) *(-1)
+
+        if sort: 
+            final_neg.sort()
+            final_pos[::-1].sort()
+
+        partition_, mean, std = self.utg.partition(final_pos, numbers_of_partition=2)
+        partition_size = len(partition_)
+        std_lines = []
+        set_lines = []
+        for arr in partition_:
+            set_lines.append(arr[-1])
+        set_lines.pop(0)
+
+        for i in range(1,int(partition_size/2)):
+            std_lines.append(i*std + mean)
+            std_lines.append(-i*std + mean)
+
+
+        plt.figure()
+        if probability:
+            base = plt.gca().transData
+            rot = transforms.Affine2D().rotate_deg(90)
+            plt.bar(np.arange(len(final_pos)),-final_pos, color='blue', alpha = 0.7, label = "+p",transform = rot + base)
+            plt.bar(range(len(final_neg)), -final_neg, bottom = -np.array(final_pos), color = "red", alpha = 0.7, label = "-p", transform = rot + base)
+            if sort:
+                for xc in std_lines:
+                    plt.axvline(x = xc , color ="black", linestyle = '--')
+                plt.axvline(x = mean, color = "black", linestyle = '--')
+                for yc in set_lines: 
+                    plt.axhline(y = yc, color = "black", linestyle = '-')
+                plt.title("+/-probability distributioin {}: stacked + sorted".format(model_name))
+            else:
+                plt.title("+/-probability distributioin {}: stacked".format(model_name))
+            plt.xlabel("Probability")
+            plt.ylabel("Bit positions")
+            plt.legend()
+        else:
+            plt.bar(np.arange(len(final_pos)),final_pos,label = "Positive values", alpha = 0.5, color = "red")
+            plt.bar(np.arange(len(final_neg)),final_neg, label = "Negative values * (-1)", alpha = 0.5, color = "blue")
+            plt.title("+/- average bit values distributioin {}:".format(model_name))
+            plt.ylabel("Average Value")
+            plt.xlabel("Bit positions")
+            plt.legend()
+        if plot_name != None:
+            path = self.utg.create_plot_path(plot_name)
+            plt.savefig(path)
+        if show: 
+            plt.show()
+        return final_pos, final_neg, partition_
+            
+    def plot_latent_activation(self, model, index_to_split = None, title ="", activation=1, background_activation =-1, column_sort = True, unit_sort=True, index_sort = False, log_conversion = True, show = True):
+        """
+        Show plots associated with weight matrix measurements. 
+
+        Parameters: 
+            model - tf's model to evaluate 
+            index_to_split (None) - index of layer around which model will be splited (None - around bottle neck)
+            Filters:
+                column_sort (True) -  sort weight by columns (True) | sort weights by rows (False)
+                unit_sort (True) - sort by the magnitude (absolut value) of weights (True) | else sort by signs (False)
+                index_sort (False) - shuffle columns according to the probability of encoded neuron actiavtion (True) | no sort (False)
+                log_conversion (False) - convert values of weights to discrete log values (True) | work on the linear scale (False)
+            title ("") - title to show on the plot title (advice - model name) + parameters 
+            activation (1) - activation of a single bit 
+            background_activation (-1) - activation of the remaining bits
+            show (True) - show generated sample
+        
+        """
+        bit_activation, weights_matrix, *masks  = self.utm.weights_matrix_sorting(model, index_to_split, activation, background_activation,column_sort = column_sort, unit_sort = unit_sort, index_sort = index_sort, log_conversion = log_conversion)
+
+        title = title + " - activation: " +str(activation)+" background: "+ str(background_activation) + "\n "
+        if column_sort:
+            title += "column sort, "
+        else:
+            title += "row sort, "
+        if index_sort:
+            title += "index_sort"
+        else:
+            title += "no index sort"
+        if log_conversion:
+            title += " log scale"
+        else:
+            title += " linear scale"
+        
+        if index_sort:
+            fig, axes = plt.subplots(nrows=1, ncols=3, constrained_layout = True, figsize=(10,10))
+        else:
+            fig, axes = plt.subplots(nrows=1, ncols=2, constrained_layout = True, figsize=(10,10))
+        fig.suptitle(title, fontsize=16)
+        if unit_sort:
+            pa = axes[0].imshow(masks[0],interpolation='nearest',cmap=cm.Greys_r)
+            cba = fig.colorbar(pa, ax = axes[0], location = "left")
+            cba.set_label('Magnitude of Absolute Activation')
+            axes[0].set_title("Unit Sort")
+            axes[0].set_xlabel("Hidden")
+        else:
+            pa = axes[0].imshow(masks[0],interpolation='nearest',cmap=cm.Blues)
+            cba = fig.colorbar(pa, ax = axes[0], location = "left")
+            pb = axes[0].imshow(masks[1],interpolation='nearest',cmap=cm.Reds)
+            cbb = fig.colorbar(pb, ax = axes[0], location = "right")
+            cba.set_label('Negative')
+            cbb.set_label('Positive')
+            axes[0].set_title("Split Sort")
+            axes[0].set_xlabel("Hidden")
+        axes[0].set_aspect('auto')
+
+        
+        axes[1].imshow(weights_matrix, interpolation='nearest', cmap=cm.Greys_r)
+        axes[1].set_title("Weights")
+        axes[1].set_ylabel("Visible")
+        axes[1].set_xlabel("Hidden")
+        axes[1].set_aspect('auto')
+        
+        if index_sort:
+            axes[2].bar(np.arange(len(bit_activation)), bit_activation, align = "center", alpha = 0.5)
+            axes[2].set_title("Bit Activation")
+            axes[2].set_ylabel("Activation Probability")
+            axes[2].set_xlabel("Bit index")
+            axes[2].set_aspect('auto')
+        if show:
+            plt.show()
+
+        return
+    
+
+
+
 
     """
     def plot_global_trajectory(self, encoder, decoder, array,plot_name, epochs = 20, 

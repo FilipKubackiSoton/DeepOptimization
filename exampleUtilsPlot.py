@@ -45,7 +45,24 @@ utgen6 = UtilsGenome(utg, utm, sample_set, model6)
 #utp.plot_latent_acitvation(model = model6, sample_set = sample_set)
 
 ################################ PLOT MODEL EVOLUTION ################################
-utp.plot_evolution_model(model = model6, sample_set = sample_set)
+#utp.plot_evolution_model(model = model6, sample_set = sample_set)
 
+################################ PLOT FITNESS DEVELOPMENT PHASE ################################
+#utp.plot_fitness_development_phase(model6, sample_set)
 
+################################ PLOT WEIGHTS IN MODEL ################################
+#utp.plot_weights_model(model6, 1,2,4,5, show = True, decoder = True)
 
+################################ PLOT CORRELATION MATRIX ################################
+#utp.plot_correlation_matrix(model6)
+
+################################ PLOT SET PROBABILITY AND VALUES ################################
+#utp.plot_set_probability_and_values(sample_set, True)
+
+################################ PLOT LATENT ACTIVATION DISTRIBUTION ################################
+#utp.plot_latent_activation_distribution(sample_set, model6, probability = True, sort = True,)
+
+################################ PLOT LATENT ACTIVATION  ################################
+#utp.plot_latent_activation(model6, title = "modelTmp", background_activation=-1, unit_sort = False, index_sort=True, column_sort=True, log_conversion = True)
+#utp.plot_latent_activation(model6, title = "modelTmp", background_activation=-1, unit_sort = True, index_sort=True, column_sort=True, log_conversion = True)
+#utp.plot_latent_activation(model6, title = "modelTmp", background_activation=-1, unit_sort = False, index_sort=False, column_sort=True, log_conversion = False)

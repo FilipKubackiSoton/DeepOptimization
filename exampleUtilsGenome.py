@@ -24,6 +24,7 @@ set6 = np.load("100_10_25_7\TrainData\TrainingData_Layer_6_Evo6.npy") #loading d
 
 
 ################################ LOADING MODELS FROM NUMPY FILES ################################
+print("\n !!![Creating model 5]")
 model5 = utg.restore_model_from_directory(
     directory = "100_10_25_7\Model_CheckPoints",
     encoder_template = 'Train_BiasEncoder_L(.+)_EvoStep_5', 
@@ -33,6 +34,7 @@ model5 = utg.restore_model_from_directory(
 
 utgen5 = UtilsGenome(utg, utm, set5, model5) # build an instance of the genomeUtils based on the set5 and model5 (both parameters are optional)
 
+print("\n !!![Creating model 6]")
 model6 = utg.restore_model_from_directory(
     directory = "100_10_25_7\Model_CheckPoints",
     encoder_template = 'Train_BiasEncoder_L(.+)_EvoStep_6', 
@@ -43,8 +45,10 @@ model6 = utg.restore_model_from_directory(
 utgen6 = UtilsGenome(utg, utm, set6, model6) # build an instance of the genomeUtils based on the set5 and model5 (both parameters are optional)
 
 ################################ VISUALIZING CHANGES IN ENCODED SPACE ################################
-
-utgen6.get_actions_in_encoded_space(set1[1], show = True, title = "model6") #examin sample set1[]
+print("\n !!![Examin sample = set[1]]")
+utgen6.get_actions_in_encoded_space(set1[1], show = True, title = "model6") #examin sample set1[1]
+print("\n !!![Examin sample = set[2]]")
+utgen6.get_actions_in_encoded_space(set1[2], show = True, title = "model6") #examin sample set1[2]
 
 ################################ GENOME EXTRACTION AND CHECK  ################################
 

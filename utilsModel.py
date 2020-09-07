@@ -10,6 +10,8 @@ from shallowNet.shallowNet import shallowNet, DenseTranspose
 from tensorflow.keras.optimizers import Adam
 from KnapSack import KnapSack
 import utilsGeneral as utg
+from numpy.ma import masked_array
+
 
 class UtilsModel:
     def __init__(self, utg):
@@ -73,10 +75,11 @@ class UtilsModel:
     def split_model_into_encoder_decoder(self, model, index_to_split = None, show = False):
         """
         Extract encoder and decoder from the model.
-        The model is splited around the bottle neck. 
+        The model is splited around the bottle neck or index_to_split. 
 
         Parameters:
             model - model
+            index_to_split (None) - index of layer around which model will be splited (None - around bottle neck)
             show (False) - show summary of encoder and decoder 
         Returns:
             encoder, decoder of types tensorflow.model
@@ -297,98 +300,201 @@ class UtilsModel:
             trajectory_samples.append(current_target_trajectory)
         return modified_data_set, np.asarray(trajectory_samples)
 
+    def correlation_matrix(self, model, activation=1, background_activation =-1, threshold = None):
+            """
+            Return "corellation" matrix. It compares encoded representation comming from 
+            different single bits activation (sample with i-th bit set to activation's value and 
+            all others set to back_ground's value). "Correlation" is calculated as RMSE with 
+            some threshodl value to alliviate noise influence. 
 
-"""
-    def split_model_into_encoder_decoder(self, model, show_summary=False):
+            Parameters: 
+                model - tf's model to evaluetion  
+                activation (1) - activation of a single bit 
+                background_activation (-1) - activation of the remaining bits
+                threshodle (None) - threshodl set to std, else threshold might be passed manually 
+            Returns: 
+                Corelation matrix plot 
+            """
+            def latent_activation(model):
+                encoder, decoder = self.split_model_into_encoder_decoder(model)
+                size = encoder.input_shape[-1]
+                res = []
+                for i in range(size):
+                    arr = np.zeros(size) + background_activation
+                    arr[i] = activation
+                    res.append(self.code(arr, encoder))
+                return res
 
-        if show_summary:
-            print("[INFO]: Extracting encoder and decoder from the model")
-            print(type(model))
-        layer_to_split = model.layers[0]
-        index_to_split = 0
-        # the code here might be simpler stoping at the denseTranspose type, but its more robust
-        for i in range(len(model.layers)):
-            if model.layers[i].output.shape[-1] <= layer_to_split.output.shape[-1]:
-                layer_to_split = model.layers[i]
-                index_to_split = i
-        index_to_split += 1
+            def correlation(array1, array2, threshold = threshold):
+                arr = array1-array2
+                if threshold == None:
+                    threshold = np.std(arr)
+                arr=np.where(((arr < threshold) & (arr > -threshold)), 0, arr)
+                return np.sqrt((arr**2).mean())
+        
+        
 
-        inputs_encoder = model.inputs
-        x = inputs_encoder
-        for new_layer_encoder in model.layers[1:index_to_split]:
-            x = new_layer_encoder(x)
-        encoder_ = tf.keras.Model(inputs_encoder, x)
+            encoded_bit_representation = latent_activation(model)
+            sample_numbers = np.shape(encoded_bit_representation)[0]
+            conv = []
+            for i in range(sample_numbers):
+                tmp = []
+                for j in range(sample_numbers):
+                    tmp.append(
+                        correlation(
+                            encoded_bit_representation[i], 
+                            encoded_bit_representation[j]
+                            ))
+                conv.append(np.asarray(tmp))
+            return np.asarray(conv)
 
-        latent_shape = encoder_.layers[-1].output.shape[-1]
-        inputs_decoder = Input(shape=latent_shape)
-        y = inputs_decoder
-        for new_layer_decoder in model.layers[index_to_split:]:
-            y = new_layer_decoder(y)
-        decoder_ = tf.keras.Model(inputs_decoder, y)
-        if show_summary:
-            print("---------------------------- ENCODER ----------------------------")
-            encoder_.summary()
-            print("\n---------------------------- DECODER ------------------------")
-            decoder_.summary()
-        return encoder_, decoder_
-"""
+    def weights_matrix_sorting(self, model, index_to_split = None, activation=1, background_activation = -1, column_sort = True, unit_sort=True, index_sort = False, log_conversion = False):
+        """
+        Transofrm weight matrix for the sake of visibility. 
+
+        Parameters: 
+            model - tf's model from which weight matrix will be displayed 
+            model_split_index (None) - 
+        
+            activation (1) - activation of a single bit 
+            background_activation (-1) - activation of the remaining bits
+            column_sort (True) -  sort weight by columns (True), sort weights by rows (False)
+            unit_sort (True) - sort by the magnitude (absolut value) of weights (true), else sorth by signs (false)
+            index_sort (False) - shuffle columns according to the probability of encoded neuron actiavtion (True)
+            log_conversion (False) - convert values of weights to discrete log values (True), work on the linear scale (False)
+        
+        Returns:
+            if unit_sort = True:
+                return hidden_nodes_activation_distribution, weights_matrix, sorted_weights_matrix
+            if unit_sort = False:
+                return hidden_nodes_activation_distribution, weights_matrix, 
+                negative_weights_negative_mask, positive_weights_negative_mask ,
+                sorted_negative_weights_matrix, sorted_positive_weights_matrix
+        """
+        def extract_weight_matrix(weights):
+            if type(weights) == type(np.array([[1],[1]])) and len(np.shape(weights))==2:
+                return weights
+            for w in weights:
+                if(len(np.shape(w))==2):
+                    return w
+        def value(x):
+            if log_conversion:
+                if x==0 or x ==-0:
+                    return 0
+                return round(math.log(abs(x),10))
+            else:
+                if(x<0):
+                    return -x
+                return x
+
+        def shuffle_columns_weights_matrix(decoder, pos): 
+            #matrix  = decoder.layers[1].get_weights()[1]
+            matrix  = extract_weight_matrix(encoder.layers[-1].get_weights())
+            
+            if np.shape(matrix)[0]<np.shape(matrix)[1]:
+                matrix = matrix.transpose()
+            mat = np.full_like(matrix, 0)
+            index = 0
+            for i in pos:
+                mat[:, index] = matrix[:, i]
+                index +=1
+            return mat
+
+        def matrix_row_sort(x):
+            def pushZerosToEnd(arr): 
+                count = 0 # Count of non-zero elements 
+                n = len(arr)
+                for i in range(n): 
+                    if arr[i] != 0: 
+                        arr[count] = arr[i] 
+                        count+=1
+                while count < n: 
+                    arr[count] = 0
+                    count += 1
+                return arr
+            
+            def pushZerosToBegining(arr): 
+                count = 0 # Count of non-zero elements 
+                tmp = []
+                count_zeros =0
+                for i in arr.tolist(): 
+                    if i != 0: 
+                        tmp.append(i)
+                    else:
+                        count_zeros+=1
+                return np.concatenate((np.zeros(count_zeros), np.asarray(tmp)), axis = None)
+
+            pos = []
+            neg = []
+
+            if unit_sort:
+                for i in x:
+                    if i>0:
+                        pos.append(value(i))
+                    else:
+                        pos.append(value(-i))
+                return np.sort(pos)
+
+            else:
+                for i in x:
+                    if i>0:
+                        pos.append(value(i)) 
+                        neg.append(0)
+                    else:
+                        neg.append(value(-i))
+                        pos.append(0)
+                return pushZerosToEnd(-np.sort(-np.asarray(neg)[::-1])), pushZerosToBegining(np.sort(np.asarray(pos)))            
+            
+            
+        encoder, decoder = self.split_model_into_encoder_decoder(model, index_to_split)
+        size = encoder.layers[0].input_shape[-1]
+        latent_size = np.shape(encoder.layers[-1].get_weights()[0])[-1]
+        res = np.zeros(latent_size)
+        glob_pos = {}
+        for i in range(size):
+            arr = np.zeros(size) + background_activation
+            arr[i] = activation
+            res += np.where(self.code(arr, encoder) > 0.0, 0, 1)/size
+        
+        for i in range(latent_size):
+            glob_pos[i] = res[i]
+
+        if index_sort:
+            pos = {k : v for k, v in sorted(glob_pos.items(), key = lambda item : item[1])}
+            res.sort() # sort bits accorg
+        else:
+            pos = np.arange(latent_size)
+
+        if column_sort:        
+            weights_matrix = shuffle_columns_weights_matrix(decoder, pos).transpose()
+        else:
+            weights_matrix = shuffle_columns_weights_matrix(decoder, pos) 
 
 
+        if unit_sort:
+            sorted_weights_matrix = copy.copy(weights_matrix)
+            for i in range(np.shape(sorted_weights_matrix)[0]):
+                sorted_weights_matrix[i] = matrix_row_sort(sorted_weights_matrix[i])
+            if column_sort:
+                weights_matrix = weights_matrix.transpose()
+                sorted_weights_matrix = sorted_weights_matrix.transpose()
 
+            return res, weights_matrix, sorted_weights_matrix
 
-"""
-def code_flip_decode(array, encoder, decoder, debuge_variation=False):
-    
-    Apply random bit flip in the latent space. 
-    encode -> flip - > decode 
+        else:
+            sorted_weights_matrix_neg = copy.copy(weights_matrix)
+            sorted_weights_matrix_pos = copy.copy(weights_matrix)
 
-    Parameters: 
-        array - array representing binary array 
-        encoder - encoder reducing dimensionality
-        decoder - decoder retrieving values from the latent space 
-        debuge_variation - show info useful fo debuging 
+            for i in range(np.shape(sorted_weights_matrix_pos)[0]):
+                sorted_weights_matrix_neg[i], sorted_weights_matrix_pos[i] = matrix_row_sort(sorted_weights_matrix_neg[i])
 
-    Returns: 
-        output_tensor, output_array_binary, new_fitness
-    
-    N = np.shape(array)[-1]
-    new_array = (
-        encoder(tf.expand_dims(array, 0))[-1].numpy().flatten()
-    )  # encode a sample
-    # new_array_binary = np.where(new_array>0, 1, 0) # binarize latent representation
-    index = np.random.randint(np.shape(new_array)[-1])  # choose random index to flip
-    new_array_fliped = copy.copy(new_array)  # create copy of the encoded array
-    new_array_fliped[index] *= -1  # apply flip
-    changed_tensor = tf.convert_to_tensor(
-        tf.expand_dims(new_array_fliped, 0)
-    )  # create new tensor
-    new_tensor = decoder(
-        changed_tensor
-    )  # decode the sample with the change from the latent spaece
-    output_array = new_tensor.numpy()[-1]  # extraxt simple 1D array from tensor
-    output_array_binary = np.where(
-        new_tensor.numpy()[-1] > 0.0, 1, -1
-    )  # binarize decoded tensor around 0.0
-    new_fitness = self.fitness_function(
-        output_array_binary
-    )  # calculate transformed tensor fitness
-    output_tensor = tf.convert_to_tensor(
-        output_array_binary.reshape((1, N)), dtype=tf.float32
-    )  # save output tensor
-    if debuge_variation:
-        print(
-            "Input fitness: ",
-            self.fitness_function(array),
-            ", Decoded fitness: ",
-            self.fitness_function(output_array_binary),
-        )
-        print("Input: ", array)
-        print("Encoded: ", new_array)
-        print("Encoded fliped, index: ", index, " : ", new_array_fliped)
-        print("Decoded: ", output_array)
-        print("Decoder binary: ", output_array_binary, "\n")
-    #output_array_binary = knapSack.SolToTrain(output_array_binary)
-    return output_tensor, output_array_binary, new_fitness
-"""
+            if column_sort:
+                weights_matrix =weights_matrix.transpose()
+                neg_mask = masked_array(sorted_weights_matrix_neg.transpose(), sorted_weights_matrix_neg.transpose()==0)
+                pos_mask = masked_array(sorted_weights_matrix_pos.transpose(), sorted_weights_matrix_pos.transpose()==0)
+            else: 
+                neg_mask = masked_array(sorted_weights_matrix_neg, sorted_weights_matrix_neg==0)
+                pos_mask = masked_array(sorted_weights_matrix_pos, sorted_weights_matrix_pos==0)
 
+            return res, weights_matrix, neg_mask, pos_mask ,sorted_weights_matrix_neg, sorted_weights_matrix_pos
 
