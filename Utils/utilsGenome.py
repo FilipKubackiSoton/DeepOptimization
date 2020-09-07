@@ -1,7 +1,6 @@
-from utilsGeneral import UtilsGeneral
-from utilsModel import UtilsModel
-from utilsPlot import UtilsPlot
-from utilsEncoded import UtilsEncoded
+from Utils.utilsGeneral import UtilsGeneral
+from Utils.utilsModel import UtilsModel
+from Utils.utilsPlot import UtilsPlot
 from KnapSack import KnapSack
 from shallowNet.shallowNet import shallowNet, DenseTranspose
 import numpy as np

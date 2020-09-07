@@ -1,7 +1,6 @@
 from Utils.utilsGeneral import UtilsGeneral
 from Utils.utilsModel import UtilsModel
 from Utils.utilsPlot import UtilsPlot
-from Utils.utilsEncoded import UtilsEncoded
 from Utils.utilsGenome import UtilsGenome
 from KnapSack.KnapSack import KnapSack
 from shallowNet.shallowNet import shallowNet, DenseTranspose
@@ -12,7 +11,6 @@ knapSack = KnapSack("100_5_25_1")
 utg = UtilsGeneral(knapSack)
 utm = UtilsModel(utg)
 utp = UtilsPlot(utilsGeneral = utg, utilsModel = utm)
-ute = UtilsEncoded(utilsGeneral = utg, utilsModel = utm)
 fitness_function = knapSack.Fitness
 
 set1 = np.load("100_10_25_7\TrainData\TrainingData_Layer_1_Evo1.npy") #loading dataset 1
@@ -45,13 +43,14 @@ model6 = utg.restore_model_from_directory(
 utgen6 = UtilsGenome(utg, utm, set6, model6) # build an instance of the genomeUtils based on the set5 and model5 (both parameters are optional)
 
 ################################ VISUALIZING CHANGES IN ENCODED SPACE ################################
+"""
 print("\n !!![Examin sample = set[1]]")
 utgen6.get_actions_in_encoded_space(set1[1], show = True, title = "model6") #examin sample set1[1]
 print("\n !!![Examin sample = set[2]]")
 utgen6.get_actions_in_encoded_space(set1[2], show = True, title = "model6") #examin sample set1[2]
-
+"""
 ################################ GENOME EXTRACTION AND CHECK  ################################
-
+"""
 print("\n !!![Creating map of actions]")
 swap, single_add, grouping = utgen6.get_map_of_actions_based_on_samples( 
     model = None, 
@@ -66,8 +65,7 @@ accuracy, length, genomes = utgen6.get_genom_performence_distribution(result_swa
 utg.save_obj(accuracy, "accuracy") # save accuracy dictionary 
 utg.save_obj(length, "length") # save length dictionary 
 utg.save_obj(genomes, "genomes")# save genome dictionary 
-
-
+"""
 
 
 

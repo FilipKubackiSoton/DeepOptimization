@@ -1,20 +1,14 @@
-To train the net type in the working directory: 
-python train_shallowNet.py 
+This repository refers to the PHD's work of Jamie Caldwell created by Filip Kubacki. 
 
-Model is saved in the direcotry saved_model
-Options:
---plot: directory of resulting plot 
---input: size of the input array 
---latent: size of the latend net 
---size: size of the training set 
---epochs: number of epochs 
---batch: batch size
+Contact: fk1g19@soton.ac.uk / filip.kubacki7@gmail.com
 
-To generate plots type in the same direcotry: 
-python netInterpret.py 
+All functionalities are in the Utils directory. 
 
-Plots are based on the model from the directory: saved_model
-Options:
---aplot: directory to save plot of activation latent layer 
---wplot: dierctory to save plot of weights to latent layer
---size: set size to evaluate model
+	utilsGeneral - general functionality used heavily throughout other functions 
+	utilsModel - functionality reffering to the tensorflow models
+	utilsPlot - functionalty which creates matplotlib plots
+	utilsHyperTuner - functionality beeing responsible for custom hyper parameters tunning. 
+	utilsGenome - functionality which referes to the actions in encoded space
+
+In the case of code bugs, do not hesitate to contact me. 
+
