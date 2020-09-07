@@ -1,8 +1,8 @@
-from utilsGeneral import UtilsGeneral
-from utilsModel import UtilsModel
-from utilsPlot import UtilsPlot
-from utilsEncoded import UtilsEncoded
-from utilsGenome import UtilsGenome
+from  Utils.utilsGeneral import UtilsGeneral
+from  Utils.utilsModel import UtilsModel
+from  Utils.utilsPlot import UtilsPlot
+from  Utils.utilsEncoded import UtilsEncoded
+from  Utils.utilsGenome import UtilsGenome
 from KnapSack.KnapSack import KnapSack
 import numpy as np
 

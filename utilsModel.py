@@ -9,7 +9,7 @@ from tensorflow.keras.layers import Dense, Dropout, Flatten, Input, Reshape
 from shallowNet.shallowNet import shallowNet, DenseTranspose
 from tensorflow.keras.optimizers import Adam
 from KnapSack import KnapSack
-import utilsGeneral as utg
+import  utilsGeneral as utg
 from numpy.ma import masked_array
 
 

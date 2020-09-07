@@ -106,7 +106,7 @@ class UtilsGeneral:
             
             if(decoder_weights_template != None and re.match(decoder_weights_template, file.stem)):
                 index = int(re.findall(decoder_weights_template, file.stem)[0])
-                weights_decoder[index] = np.load(file)
+                decoder_weights[index] = np.load(file)
             
         if(decoder_reverse_order):
             decoder_bias = reverse_dictionary(decoder_bias)
@@ -431,6 +431,59 @@ class UtilsGeneral:
         sum = 0
         return val_recursive(array, 0, sum)
     
+    def partition(self, sample_set, numbers_of_partition=2, lambda_cof=1, mean= None, std = None):
+        """
+        Partition set based on its mean and std. 
+        
+        Parameters:
+            sample_set - set of samples which will be partioned. 
+            numbers_of_partition (2) - numbers of set partition (going in one direction left of right, hence all sets = 2*numbers_of_partitons)
+            lambda_cof (1) - multiplying coeffictient for std
+            mean (None) - mean aroudn which partiton stars (None - get mean from sample_set)
+            std (None) - standart deviation (Nonde - get std from sample set)
+        Returns: 
+            set of partition (list starting from -std comming to +std), 
+            mean of sample_set, 
+            standart deviation of set
+        """
+        def get_index_list(array, element):
+            return [i for i, e in enumerate(array) if e == element]
+        if type(sample_set) != type([1,2]):
+            sample_set = sample_set.tolist()
+        if std == None:
+            std = np.std(sample_set)
+        if mean == None:
+            mean = np.sum(sample_set)/np.shape(sample_set)[0] ### idk why np.mean(...) does not work 
+        arraycopy = copy.copy(sample_set)
+        res = []
+        mapindex = {}
+        stop = False
+        for i in range(1,numbers_of_partition+1): 
+            tmp_left = []
+            tmp_right = []
+            array_len = len(arraycopy)
+            for j in range(array_len):
+                element = arraycopy.pop(0)
+                if mapindex.get(element) == None:
+                        mapindex[element] = get_index_list(sample_set, element)
+                if i == numbers_of_partition:
+                    if element < mean:
+                        tmp_left.append(mapindex[element].pop())
+                    else:
+                        tmp_right.append(mapindex[element].pop())
+                else:
+                    if element >= mean - i * std/lambda_cof and element <= mean:
+                        tmp_left.append(mapindex[element].pop())
+                        
+                    elif element >= mean and element <= mean + i * std/lambda_cof:
+                        tmp_right.append(mapindex[element].pop())
+                    else:
+                        arraycopy.append(element)
+                    
+            res.insert(0, np.asarray(tmp_left))
+            res.append(np.asarray(tmp_right))
+
+        return res, mean, std
 
 """
 def generate_training_sat(N, set_size, debuge_variation=False):
