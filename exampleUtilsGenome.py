@@ -52,6 +52,7 @@ utgen6.get_actions_in_encoded_space(set1[2], show = True, title = "model6") #exa
 
 ################################ GENOME EXTRACTION AND CHECK  ################################
 
+print("\n !!![Creating map of actions]")
 swap, single_add, grouping = utgen6.get_map_of_actions_based_on_samples( 
     model = None, 
     sample_set = set1, 
@@ -59,6 +60,7 @@ swap, single_add, grouping = utgen6.get_map_of_actions_based_on_samples(
 
 result_swap = utgen6.get_map_hidden_visible_samples(swap) # tranfrom swap directory into hidden change : vissible change: list of samples witch such change
 
+print("\n !!![Checking genome quality]")
 accuracy, length, genomes = utgen6.get_genom_performence_distribution(result_swap, 0, sample_length_filter=5) # extract genome from every vissible change and check genome accuracy 
 
 utg.save_obj(accuracy, "accuracy") # save accuracy dictionary 
