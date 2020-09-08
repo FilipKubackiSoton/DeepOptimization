@@ -12,3 +12,5 @@ All functionalities are in the Utils directory.
 
 In the case of code bugs, do not hesitate to contact me. 
 
+To reproduce python environment use myvenv.yml
+
